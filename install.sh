@@ -12,10 +12,6 @@ prepare_disk() {
   case "$yn" in
     [yY]) 
       shred -v -n1 $disk
-      break
-      ;;
-    [nN])
-      break
       ;;
     *) 
       ;;
@@ -66,7 +62,7 @@ echo -e "\n*** Installing Arch Linux"
 timedatectl set-ntp true
 
 echo -e "* Updating mirrorlist.."
-reflector --l 5 -c Norway,Sweden --sort rate --save /etc/pacman.d/mirrorlist
+reflector -l 5 -c Norway,Sweden --sort rate --save /etc/pacman.d/mirrorlist
 
 echo -e "\n** Select installation disk: "
 disks=() 
@@ -165,8 +161,8 @@ pacstrap /mnt "${packages[@]}"
 
 git clone https://github.com/dborseth/arch-setup /mnt/tmp/arch-setup
 
-chmod +x /mnt/tmp/configure.sh
-chmod +x /mnt/tmp/users.sh
+chmod +x /mnt/tmp/arch-setup/configure.sh
+chmod +x /mnt/tmp/arch-setup/users.sh
 
 # arch-chroot /mnt bash -c "/mnt/tmp/configure.sh '$cpu_vendor' '$gpu_vendors'""
 # arch-chroot /mnt bash -c "/mnt/tmp/users.sh"
