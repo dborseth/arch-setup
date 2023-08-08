@@ -46,9 +46,9 @@ prepare_disk() {
 }
 
 echo -e "\n*** Installing Arch Linux"
-echo -e "\n** Installing needed utilities"
 
 timedatectl set-ntp true
+echo -e "* Updating mirrorlist"
 reflector --latest 5 --sort rate --save /etc/pacman.d/mirrorlist
 
 echo -e "\n** Select installation disk: "
@@ -81,7 +81,7 @@ elif [[ "${#disks[@]}" -eq 1 ]]; then
   done
 else
   PS3="disk: "
-  select selected_disk in "${#disks[@]}"; do
+  select selected_disk in "$disks"; do
     if [[ -n $selected_disk ]]; then
       read -rp "Use $selected_disk? [Y/n] " yn
       yn=${yn:-Y}
