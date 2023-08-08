@@ -49,7 +49,6 @@ echo -e "\n*** Installing Arch Linux"
 echo -e "\n** Installing needed utilities"
 
 timedatectl set-ntp true
-pacman -Sy --noconfirm git python reflector
 reflector --latest 5 --sort rate --save /etc/pacman.d/mirrorlist
 
 echo -e "\n** Select installation disk: "
@@ -70,7 +69,7 @@ elif [[ "${#disks[@]}" -eq 1 ]]; then
   
     case "$yn" in
       [yY])
-        prepare_disk "$selected_disk"
+       prepare_disk "$selected_disk"
         break
         ;;
       [nN])
@@ -81,7 +80,7 @@ elif [[ "${#disks[@]}" -eq 1 ]]; then
     esac
   done
 else
-  PS3="disk [1-${#disks[@]}] : "
+  PS3="disk: "
   select selected_disk in "${#disks[@]}"; do
     if [[ -n $selected_disk ]]; then
       read -rp "Use $selected_disk? [Y/n] " yn
@@ -89,7 +88,7 @@ else
       
       case "$yn" in
         [yY]) 
-          prepare_disk $selected_disk
+         prepare_disk $selected_disk
           break
           ;;
         [nN])
