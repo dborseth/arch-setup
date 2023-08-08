@@ -6,18 +6,35 @@ prepare_disk() {
   disk="$1"
   
   echo "* Wiping $disk and removing all GPT entries"
-  shred -v -n1 $disk
+  read -rp "Shred disk before continuing? [y/N] " yn
+  yn=${yn:-N}
+      
+  case "$yn" in
+    [yY]) 
+      shred -v -n1 $disk
+      break
+      ;;
+    [nN])
+      break
+      ;;
+    *) 
+      ;;
+  esac
+  
   sgdisk -Z $disk
 
-  echo "* Creating EFI and root partitions"
+  echo -e "\n* Creating EFI and root partitions"
   # We are creating an unencrypted EFI system partition with a FAT file system, 
   # and a root partition spanning the rest of the disk. The -t flags make sure
-  # that systemd will automatically discover out filesystems
+  # that systemd will automatically discover our filesystems meaning we don't 
+  # need fstab or crypttab
   sgdisk -n 0:0:+512MiB -t 0:ef00 -c 0:EFISYSTEM $disk
   sgdisk -n 0:0:0 -t 0:8304 -c 0:linux $disk
+  
+  echo ''
   sgdisk -p $disk
   
-  echo "* Encrypting root"
+  echo -e "\n* Encrypting root"
   # Then we encrypt the root partition. This prompts for an encryption password
   # which we set to a simple one since we will remove an replace it later.
   cryptsetup luksFormat --type luks2 /dev/disk/by-partlabel/linux
@@ -35,21 +52,21 @@ prepare_disk() {
   mount $root_device /mnt
   mount --mkdir /dev/disk/by-partlabel/EFISYSTEM /mnt/efi
   
-  btrfs create subvolume /mnt/@
-  btrfs create subvolume /mnt/@snapshots
-  btrfs create subvolume /mnt/@home
-  btrfs create subvolume /mnt/@cache
-  btrfs create subvolume /mnt/@log
-  btrfs create subvolume /mnt/@tmp
+  btrfs subvolume create /mnt/@
+  btrfs subvolume create /mnt/@snapshots
+  btrfs subvolume create /mnt/@home
+  btrfs subvolume create /mnt/@cache
+  btrfs subvolume create /mnt/@log
+  btrfs subvolume create /mnt/@tmp
   
   btrfs subvolume set-default /mnt/@
 }
 
 echo -e "\n*** Installing Arch Linux"
-
 timedatectl set-ntp true
-echo -e "* Updating mirrorlist"
-reflector --latest 5 --sort rate --save /etc/pacman.d/mirrorlist
+
+echo -e "* Updating mirrorlist.."
+reflector --l 5 -c Norway,Sweden --sort rate --save /etc/pacman.d/mirrorlist
 
 echo -e "\n** Select installation disk: "
 disks=() 
@@ -69,7 +86,7 @@ elif [[ "${#disks[@]}" -eq 1 ]]; then
   
     case "$yn" in
       [yY])
-       prepare_disk "$selected_disk"
+       prepare_disk "${disks[0]}"
         break
         ;;
       [nN])
@@ -81,14 +98,14 @@ elif [[ "${#disks[@]}" -eq 1 ]]; then
   done
 else
   PS3="disk: "
-  select selected_disk in "$disks"; do
-    if [[ -n $selected_disk ]]; then
-      read -rp "Use $selected_disk? [Y/n] " yn
+  select disk in "${disks[@]}"; do
+    if [[ -n $disk ]]; then
+      read -rp "Use $disk? [Y/n] " yn
       yn=${yn:-Y}
       
       case "$yn" in
         [yY]) 
-         prepare_disk $selected_disk
+         prepare_disk $disk
           break
           ;;
         [nN])
