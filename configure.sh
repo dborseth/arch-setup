@@ -7,15 +7,7 @@ packages=(iwd networkmanager zsh bluez bluez-utils usbutils nvme-cli htop nvtop 
 
 echo -e "\n** Configuring system"
 
-while true; do
-  read -p "Enter time zone: " timezone
-  if timedatectl list-timezones | grep -q "^$timezone$"; then
-    break
-  else
-    echo "Invalid timezone: $timezone"
-  fi
-done
-
+read -p "Enter time zone: " timezone
 echo "Setting time zone to $1"
 ln -sf /usr/share/zoneinfo/$1 /etc/localtime
 hwclock --systohc --utc

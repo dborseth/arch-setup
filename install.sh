@@ -49,7 +49,7 @@ prepare_disk() {
   # We then mount the root to set up some btrfs subvolumes. The number of volumes
   # here is chosen to exclude var/cache var/log and var/tmp from any snapshots
   # of /, but not really necessary. 
-  mount -o 'noatime,compress=zstd:1,space_cavhe=v2' "/dev/mapper/root" /mnt
+  mount -o 'noatime,compress=zstd:1,space_cache=v2' "/dev/mapper/root" /mnt
   mount --mkdir /dev/disk/by-partlabel/EFISYSTEM /mnt/efi
   
   btrfs subvolume create /mnt/@
@@ -123,10 +123,9 @@ fi
 echo -e "\n*** Bootstrapping the new system"
 
 packages=(base base-devel linux linux-firmware btrfs-progs mkinitcpio 
-          cryptsetup binutils elfutils sbctl sbsigntools fwupd sudo nvim git)
+          cryptsetup binutils elfutils sbctl sbsigntools fwupd sudo vim git)
 
 cpu_vendor=$(grep "vendor_id" /proc/cpuinfo | head -n 1 | awk '{print $3}')
-echo "* Found CPU with vendor: $cpu_vendor" 
 if [[ "$cpu_vendor" == "GenuineIntel" ]]; then
   packages+=("intel-ucode")
 elif [[ "$cpu_vendor" == "AuthenticAMD" ]]; then
@@ -147,16 +146,14 @@ while read -r line; do
   fi
 done <<< "$gpus"
 
-echo "\n${packages[@]}"
+echo -e "\n${packages[@]}"
 pacstrap /mnt "${packages[@]}" 
 
-git clone https://github.com/dborseth/arch-setup /mnt/tmp/arch-setup
-
-chmod +x /mnt/tmp/arch-setup/configure.sh
+arch-chroot /mnt git clone https://github.com/dborseth/arch-setup /mnt/tmp/arch-setup
+arch-chroot /mnt chmod +x /mnt/tmp/arch-setup/configure.sh
 # chmod +x /mnt/tmp/arch-setup/users.sh
-
-arch-chroot /mnt bash -c "/mnt/tmp/configure.sh '$cpu_vendor' '$gpu_vendors'"
-# arch-chroot /mnt bash -c "/mnt/tmp/users.sh"
+arch-chroot /mnt bash -c "/mnt/tmp/arch-setup/configure.sh '$cpu_vendor' '$gpu_vendors'"
+# arch-chroot /mnt bash -c "/mnt/tmp/arch-setup/users.sh"
 
 echo -e '\n*** Installation script finished, cleaning up'
 rm -rf /mnt/tmp/arch-setup
