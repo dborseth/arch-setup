@@ -1,4 +1,4 @@
-conf_dir=/tmp/arch-setup/etc/
+conf_dir=/tmp/arch-setup/etc
 
 packages=(iwd networkmanager zsh bluez bluez-utils usbutils nvme-cli htop nvtop powertop util-linux apparmor snapper nvim man-db man-pages exa fzf ripgrep fd zram-generator audit plymouth greetd greetd-agreety greetd-tuigreet blueman pacman-contrib lm_sensors polkit-kde-agent xdg-desktop-portal-hyprland qt6-wayland qt5-wayland slurp grim swaybg swayidle mako pipewire wireplumber ttf-cascadia-code inter-font curl tlp)
 
@@ -27,8 +27,8 @@ done <<< "$gpus"
 echo -e "\n** Configuring system"
 
 read -p "Enter time zone: " timezone
-echo "Setting time zone to $1"
-ln -sf /usr/share/zoneinfo/$1 /etc/localtime
+echo "Setting time zone to $timezone"
+ln -sf /usr/share/zoneinfo/$timezone /etc/localtime
 hwclock --systohc --utc
 
 read -p "Enter hostname: " hostname
@@ -126,13 +126,17 @@ sbctl sign -s
 sbctl sign -s -o /usr/lib/fwupd/efi/fwupdx64.efi.signed /usr/lib/fwupd/efi/fwupdx64.efi
 sbctl sign -s -o /usr/lib/systemd/boot/efi/systemd-boot64.efi.signed /usr/lib/systemd/boot/efi/systemd-bootx64.efi
 
+sbctl sign-all
+sbctl verify
+
+bootctl update --graceful
 
 #sbctl enroll-keys -m
 
 services=(
   systemd-boot-update.service
   systemd-oomd.service
-  systemd-timesynd.service
+  systemd-timesyncd.service
   systemd-resolved.service
   iwd.service
   NetworkManager.service
