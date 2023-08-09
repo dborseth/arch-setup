@@ -63,8 +63,15 @@ btrfs subvolume create /mnt/@tmp
   
 btrfs subvolume set-default /mnt/@
 
-packages=(base base-devel linux linux-firmware btrfs-progs mkinitcpio 
+packages=(base base-devel linux linux-firmware btrfs-progs mkinitcpio systemd-ukify 
           cryptsetup binutils elfutils sudo helix git zsh networkmanager iwd)
+
+cpu_vendor=$(grep "vendor_id" /proc/cpuinfo | head -n 1 | awk '{print $3}')
+if [[ "$cpu_vendor" == "GenuineIntel" ]]; then
+  packages+=("intel-ucode")
+elif [[ "$cpu_vendor" == "AuthenticAMD" ]]; then
+  packages+=("amd-ucode")
+fi
 
 echo -e "\n${packages[@]}"
 pacstrap /mnt "${packages[@]}" 
@@ -78,10 +85,6 @@ cat > /mnt/etc/NetworkManager/conf.d/wifi.conf <<EOF
 [device]
 wifi.backend=iwd
 EOF
-
-systemctl --root /mnt enable \
-  systemd-resolved.service \
-  NetworkManager.service
 
 sed -i "s/^#\(en_US.UTF-8\)/\1/" /mnt/etc/locale.gen
 sed -i "s/^#\(no_NB.UTF-8\)/\1/" /mnt/etc/locale.gen
@@ -100,13 +103,17 @@ systemd-firstboot --force \
 
 # https://wiki.archlinux.org/title/Unified_kernel_image#kernel-install
 # https://github.com/swsnr/dotfiles/blob/db42fe95fceeac68e4fbe489aed5e310f65b1ae7/arch/bootstrap-from-iso.bash#L131
-cat > /etc/mikintcpio.conf.d/base.conf <<EOF
+cat > /etc/mkinitcpio.conf.d/base.conf <<EOF
 MODULES=()
 FILES=()
 HOOKS=(base systemd btrfs autodetect modconf keyboard sd-vconsole sd-encrypt block filesystems fsck)
 EOF
 
-echo "layout=uki" >> /mnt/etc/kernel/install.conf
+cat > /mnt/etc/kernel/install.conf <<EOF
+layout=uki
+initrd_generator=mkinitcpio
+EOF
+
 kernel_versions=(/mnt/usr/lib/modules/*)
 kernel_version="${kernel_versions[0]##*/}"
 
@@ -114,6 +121,10 @@ arch-chroot /mnt kernel-install add "${kernel_version}" \
     "/usr/lib/modules/${kernel_version}/vmlinuz"
 
 bootctl --root /mnt install
+
+systemctl --root /mnt enable \
+  systemd-resolved.service \
+  NetworkManager.service
 
 echo -e '\n*** Installation script finished, cleaning up'
 
