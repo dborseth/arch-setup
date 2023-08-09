@@ -1,6 +1,6 @@
 conf_dir=/tmp/arch-setup/etc
 
-packages=(iwd networkmanager zsh bluez bluez-utils usbutils nvme-cli htop nvtop powertop util-linux apparmor snapper nvim man-db man-pages exa fzf ripgrep fd zram-generator audit plymouth greetd greetd-agreety greetd-tuigreet blueman pacman-contrib lm_sensors polkit-kde-agent xdg-desktop-portal-hyprland qt6-wayland qt5-wayland slurp grim swaybg swayidle mako pipewire wireplumber ttf-cascadia-code inter-font curl tlp)
+packages=(zsh bluez bluez-utils usbutils nvme-cli htop nvtop powertop util-linux apparmor snapper nvim man-db man-pages exa fzf ripgrep fd zram-generator audit plymouth greetd greetd-agreety greetd-tuigreet blueman pacman-contrib lm_sensors polkit-kde-agent xdg-desktop-portal-hyprland qt6-wayland qt5-wayland slurp grim swaybg swayidle mako pipewire wireplumber ttf-cascadia-code inter-font curl tlp sbctl sbsigntools fwupd)
 
 cpu_vendor=$(grep "vendor_id" /proc/cpuinfo | head -n 1 | awk '{print $3}')
 if [[ "$cpu_vendor" == "GenuineIntel" ]]; then
@@ -59,9 +59,6 @@ fi
 
 install -pm644 "$conf_dir/loader.conf" /efi/loader/loader.conf
 install -pm644 "$conf_dir/pacman.conf" /etc/pacman.conf
-
-ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
-install -Dpm644 "$conf_dir/networkmanager-wifi.conf" /etc/NetworkManager/conf.d/wifi.conf
 
 # TODO greetd config
 

@@ -64,18 +64,30 @@ btrfs subvolume create /mnt/@tmp
 btrfs subvolume set-default /mnt/@
 
 packages=(base base-devel linux linux-firmware btrfs-progs mkinitcpio 
-          cryptsetup binutils elfutils sbctl sbsigntools fwupd sudo vim git
-          zsh networkmanager)
+          cryptsetup binutils elfutils sudo helix git zsh networkmanager iwd)
 
 echo -e "\n${packages[@]}"
 pacstrap /mnt "${packages[@]}" 
 
 arch-chroot /mnt git clone https://github.com/dborseth/arch-setup /mnt/root/arch-setup
-arch-chroot /mnt hwclock --systohc --utc
+
+# https://wiki.archlinux.org/title/NetworkManager#systemd-resolved
+# https://wiki.archlinux.org/title/NetworkManager#Using_iwd_as_the_Wi-Fi_backend
+ln -sf /run/systemd/resolve/stub-resolv.conf /mnt/etc/resolv.conf
+cat > /mnt/etc/NetworkManager/conf.d/wifi.conf <<EOF
+[device]
+wifi.backend=iwd
+EOF
+
+systemctl --root /mnt enable \
+  systemd-resolved.service \
+  NetworkManager.service
 
 sed -i "s/^#\(en_US.UTF-8\)/\1/" /mnt/etc/locale.gen
 sed -i "s/^#\(no_NB.UTF-8\)/\1/" /mnt/etc/locale.gen
+
 arch-chroot /mnt locale-gen
+arch-chroot /mnt hwclock --systohc --utc
 
 systemd-firstboot --force \
   --root /mnt \
@@ -85,6 +97,16 @@ systemd-firstboot --force \
   --root-shell=/usr/bin/zsh \
   --prompt-root-password \
   --prompt-hostname 
+
+# https://wiki.archlinux.org/title/Unified_kernel_image#kernel-install
+# https://github.com/swsnr/dotfiles/blob/db42fe95fceeac68e4fbe489aed5e310f65b1ae7/arch/bootstrap-from-iso.bash#L131
+echo "layout=uki" >> /mnt/etc/kernel/install.conf
+kernel_versions=(/mnt/usr/lib/modules/*)
+kernel_version="${kernel_versions[0]##*/}"
+arch-chroot /mnt kernel-install add "${kernel_version}" \
+    "/usr/lib/modules/${kernel_version}/vmlinuz"
+
+bootctl --root /mnt install
 
 echo -e '\n*** Installation script finished, cleaning up'
 
