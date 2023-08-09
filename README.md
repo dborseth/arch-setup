@@ -9,3 +9,5 @@ chmod +x install.sh
 
 ./install.sh /dev/nvme0n1
 ```
+
+Reboot and remove the usb drive. 

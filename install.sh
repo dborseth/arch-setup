@@ -8,7 +8,7 @@ echo -e "\n*** Installing Arch Linux"
 timedatectl set-ntp true
 
 reflector -l 5 -c Norway,Sweden --sort rate --save /etc/pacman.d/mirrorlist
-pacman -Sy --noconfirm git
+pacman -Sy --noconfirm git python reflector
   
 read -rp "Shred disk before continuing? [y/N] " yn
 yn=${yn:-N}
@@ -100,9 +100,16 @@ systemd-firstboot --force \
 
 # https://wiki.archlinux.org/title/Unified_kernel_image#kernel-install
 # https://github.com/swsnr/dotfiles/blob/db42fe95fceeac68e4fbe489aed5e310f65b1ae7/arch/bootstrap-from-iso.bash#L131
+cat > /etc/mikintcpio.conf.d/base.conf <<EOF
+MODULES=()
+FILES=()
+HOOKS=(base systemd btrfs autodetect modconf keyboard sd-vconsole sd-encrypt block filesystems fsck)
+EOF
+
 echo "layout=uki" >> /mnt/etc/kernel/install.conf
 kernel_versions=(/mnt/usr/lib/modules/*)
 kernel_version="${kernel_versions[0]##*/}"
+
 arch-chroot /mnt kernel-install add "${kernel_version}" \
     "/usr/lib/modules/${kernel_version}/vmlinuz"
 
