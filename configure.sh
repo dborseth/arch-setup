@@ -1,9 +1,28 @@
-cpu_vendor=$1
-gpu_vendors=$2
-
 conf_dir=/tmp/arch-setup/etc/
 
 packages=(iwd networkmanager zsh bluez bluez-utils usbutils nvme-cli htop nvtop powertop util-linux apparmor snapper nvim man-db man-pages exa fzf ripgrep fd zram-generator audit plymouth greetd greetd-agreety greetd-tuigreet blueman pacman-contrib lm_sensors polkit-kde-agent xdg-desktop-portal-hyprland qt6-wayland qt5-wayland slurp grim swaybg swayidle mako pipewire wireplumber ttf-cascadia-code inter-font curl tlp)
+
+cpu_vendor=$(grep "vendor_id" /proc/cpuinfo | head -n 1 | awk '{print $3}')
+if [[ "$cpu_vendor" == "GenuineIntel" ]]; then
+  packages+=("intel-ucode")
+elif [[ "$cpu_vendor" == "AuthenticAMD" ]]; then
+  packages+=("amd-ucode")
+fi
+
+gpus=$(lspci | grep -i "VGA compatible controller")
+gpu_vendors=()
+while read -r line; do
+  gpu_vendor=$(echo "$line" | cut -d " " -f 5-)
+
+  if [[ $gpu_vendor == *"NVIDIA"* ]]; then
+    gpu_vendors+=("nvidia")
+  elif [[ $gpu_vendor == *"Intel"* ]]; then
+    gpu_vendors+=("intel")
+  elif [[ $gpu_vendor == *"Advanced Micro Devices"* ]]; then
+    gpu_vendors+=("amd")
+  fi
+done <<< "$gpus"
+
 
 echo -e "\n** Configuring system"
 
@@ -14,7 +33,7 @@ hwclock --systohc --utc
 
 read -p "Enter hostname: " hostname
 echo "Setting hostname to $hostname"
-echo "$hostname" >> /mnt/etc/hostname
+echo "$hostname" >> /etc/hostname
 cat > /etc/hosts <<EOF
 127.0.0.1  localhost
 ::1        localhost
@@ -22,11 +41,11 @@ cat > /etc/hosts <<EOF
 EOF
 
 read -p "Enter keymap: " keymap
-echo "KEYMAP=$keymap" >> /mnt/etc/vconsole.conf
+echo "KEYMAP=$keymap" >> /etc/vconsole.conf
 
 read -p "Enter locale: " locale
-echo 'LANG=$locale' >> /mnt/etc/locale.conf
-sed -i "s/^#\($locale\)/\1/" /mnt/etc/locale.gen
+echo 'LANG=$locale' >> /etc/locale.conf
+sed -i "s/^#\($locale\)/\1/" /etc/locale.gen
 locale-gen
 
 echo -e "\n** Installing configuration files"

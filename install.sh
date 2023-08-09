@@ -125,34 +125,13 @@ echo -e "\n*** Bootstrapping the new system"
 packages=(base base-devel linux linux-firmware btrfs-progs mkinitcpio 
           cryptsetup binutils elfutils sbctl sbsigntools fwupd sudo vim git)
 
-cpu_vendor=$(grep "vendor_id" /proc/cpuinfo | head -n 1 | awk '{print $3}')
-if [[ "$cpu_vendor" == "GenuineIntel" ]]; then
-  packages+=("intel-ucode")
-elif [[ "$cpu_vendor" == "AuthenticAMD" ]]; then
-  packages+=("amd-ucode")
-fi
-
-gpus=$(lspci | grep -i "VGA compatible controller")
-gpu_vendors=()
-while read -r line; do
-  gpu_vendor=$(echo "$line" | cut -d " " -f 5-)
-
-  if [[ $gpu_vendor == *"NVIDIA"* ]]; then
-    gpu_vendors+=("nvidia")
-  elif [[ $gpu_vendor == *"Intel"* ]]; then
-    gpu_vendors+=("intel")
-  elif [[ $gpu_vendor == *"Advanced Micro Devices"* ]]; then
-    gpu_vendors+=("amd")
-  fi
-done <<< "$gpus"
-
 echo -e "\n${packages[@]}"
 pacstrap /mnt "${packages[@]}" 
 
 arch-chroot /mnt git clone https://github.com/dborseth/arch-setup /mnt/tmp/arch-setup
 arch-chroot /mnt chmod +x /mnt/tmp/arch-setup/configure.sh
 # chmod +x /mnt/tmp/arch-setup/users.sh
-arch-chroot /mnt bash -c "/mnt/tmp/arch-setup/configure.sh '$cpu_vendor' '$gpu_vendors'"
+arch-chroot /mnt bash -c "/mnt/tmp/arch-setup/configure.sh"
 # arch-chroot /mnt bash -c "/mnt/tmp/arch-setup/users.sh"
 
 echo -e '\n*** Installation script finished, cleaning up'
