@@ -23,31 +23,7 @@ while read -r line; do
   fi
 done <<< "$gpus"
 
-
 echo -e "\n** Configuring system"
-
-read -p "Enter time zone: " timezone
-echo "Setting time zone to $timezone"
-ln -sf /usr/share/zoneinfo/$timezone /etc/localtime
-hwclock --systohc --utc
-
-read -p "Enter hostname: " hostname
-echo "Setting hostname to $hostname"
-echo "$hostname" >> /etc/hostname
-cat > /etc/hosts <<EOF
-127.0.0.1  localhost
-::1        localhost
-127.0.0.1  $hostname.localdomain $hostname
-EOF
-
-read -p "Enter keymap: " keymap
-echo "KEYMAP=$keymap" >> /etc/vconsole.conf
-
-read -p "Enter locale: " locale
-echo 'LANG=$locale' >> /etc/locale.conf
-sed -i "s/^#\($locale\)/\1/" /etc/locale.gen
-locale-gen
-
 echo -e "\n** Installing configuration files"
 install -m755 -d /etc/cmdline.d
 install -m644 "$conf_dir/cmdline.d/boot.conf" /etc/cmdline.d/boot.conf 
