@@ -24,28 +24,32 @@ prepare_disk() {
   # and a root partition spanning the rest of the disk. The -t flags make sure
   # that systemd will automatically discover our filesystems meaning we don't 
   # need fstab or crypttab
-  sgdisk -n 0:0:+512MiB -t 0:ef00 -c 0:EFISYSTEM $disk
-  sgdisk -n 0:0:0 -t 0:8304 -c 0:linux $disk
+  sgdisk -n 0:0:+512MiB -t 0:ef00 -c 0:EFISYSTEM "$disk"
+  sgdisk -n 0:0:0 -t 0:8304 -c 0:linux "$disk"
+  partprobe -s "$disk"
   
   echo ''
-  sgdisk -p $disk
+  sgdisk -p "$disk"
   
   echo -e "\n* Encrypting root"
   # Then we encrypt the root partition. This prompts for an encryption password
   # which we set to a simple one since we will remove an replace it later.
   cryptsetup luksFormat --type luks2 /dev/disk/by-partlabel/linux
+
+  echo -e "\n* Opening encrypted root"
   cryptsetup luksOpen /dev/disk/by-partlabel/linux root
+  cryptsetup refresh --allow-discards --perf-no_read_workqueue --perf-no_write_workqueue --persistent root
 
   echo "* Formatting file systems"
   root_device="/dev/mapper/root"
   mkfs.fat -F32 -n EFISYSTEM /dev/disk/by-partlabel/EFISYSTEM
-  mkfs.btrfs -f -L linux "$root_device"
+  mkfs.btrfs -f -L linux "/dev/mapper/root"
   
   echo "* Creating btrfs subvolumes"
   # We then mount the root to set up some btrfs subvolumes. The number of volumes
   # here is chosen to exclude var/cache var/log and var/tmp from any snapshots
   # of /, but not really necessary. 
-  mount $root_device /mnt
+  mount -o 'noatime,compress=zstd:1,space_cavhe=v2' "/dev/mapper/root" /mnt
   mount --mkdir /dev/disk/by-partlabel/EFISYSTEM /mnt/efi
   
   btrfs subvolume create /mnt/@
@@ -63,6 +67,7 @@ timedatectl set-ntp true
 
 echo -e "* Updating mirrorlist.."
 reflector -l 5 -c Norway,Sweden --sort rate --save /etc/pacman.d/mirrorlist
+pacman -Sy --noconfirm git
 
 echo -e "\n** Select installation disk: "
 disks=() 
@@ -93,6 +98,7 @@ elif [[ "${#disks[@]}" -eq 1 ]]; then
     esac
   done
 else
+  # TODO: This behaves weird sometimes
   PS3="disk: "
   select disk in "${disks[@]}"; do
     if [[ -n $disk ]]; then
@@ -117,7 +123,7 @@ fi
 echo -e "\n*** Bootstrapping the new system"
 
 packages=(base base-devel linux linux-firmware btrfs-progs mkinitcpio 
-          cryptsetup binutils elfutils sbctl sbsigntools fwupd sudo git)
+          cryptsetup binutils elfutils sbctl sbsigntools fwupd sudo nvim git)
 
 cpu_vendor=$(grep "vendor_id" /proc/cpuinfo | head -n 1 | awk '{print $3}')
 echo "* Found CPU with vendor: $cpu_vendor" 
@@ -141,36 +147,18 @@ while read -r line; do
   fi
 done <<< "$gpus"
 
-echo -e "* Found the following GPU vendors: ${gpu_vendors[@]}"
-if echo "${gpu_vendors[@]}" | grep -q "\bnvidia\b"; then
-  packages+=("dkms" "linux-headers" "nvidia-dkms" "nvidia-utils" "nvidia-settings" "nvidia-smi")
-fi
-  
-if echo "${gpu_vendors[@]}" | grep -q "\bamd\b"; then
-  packages+=("mesa" "vulkan-radeon")
-fi
- 
-if echo "${gpu_vendors[@]}" | grep -q "\bintel\b"; then
-  packages+=("mesa" "vulkan-intel")
-fi
-
 echo "\n${packages[@]}"
 pacstrap /mnt "${packages[@]}" 
-# genfstab -L /mnt >> /mnt/etc/fstab
-# create_swapfile
 
 git clone https://github.com/dborseth/arch-setup /mnt/tmp/arch-setup
 
 chmod +x /mnt/tmp/arch-setup/configure.sh
-chmod +x /mnt/tmp/arch-setup/users.sh
+# chmod +x /mnt/tmp/arch-setup/users.sh
 
-# arch-chroot /mnt bash -c "/mnt/tmp/configure.sh '$cpu_vendor' '$gpu_vendors'""
+arch-chroot /mnt bash -c "/mnt/tmp/configure.sh '$cpu_vendor' '$gpu_vendors'"
 # arch-chroot /mnt bash -c "/mnt/tmp/users.sh"
 
-echo -e '\n*** Installation script finished'
-
-# rm /mnt/tmp/configure.sh
-# rm /mnt/tmp/users.sh
-
+echo -e '\n*** Installation script finished, cleaning up'
+rm -rf /mnt/tmp/arch-setup
 umount -R /mnt
 cryptsetup luksClose root
