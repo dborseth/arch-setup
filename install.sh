@@ -58,7 +58,7 @@ sgdisk -p "$disk"
   
 echo -e "\nEncrypting root"
 # Then we encrypt the root partition. This prompts for an encryption password
-# which we set to blank since we will remove and replace it later.
+# which we set to an easy one since we will remove and replace it later.
 cryptsetup luksFormat --type luks2 /dev/disk/by-partlabel/linux
 
 echo -e "\nOpening encrypted root"
@@ -181,8 +181,11 @@ bootctl --root /mnt install
 install -vpm644 "$script_dir/etc/loader.conf" /mnt/efi/loader/loader.conf
 
 echo -e "\nSetting up secure boot"
+# https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface/Secure_Boot#Automatic_signing_with_the_pacman_hook
 arch-chroot /mnt bash -c "
   sbctl create-keys
+  sbctl sign -s /efi/EFI/BOOT/BOOTX64.EFI
+  sbctl sign -s /efi/EFI/systemd/systemd-bootx64.efi
   sbctl sign -s -o /usr/lib/fwupd/efi/fwupdx64.efi.signed /usr/lib/fwupd/efi/fwupdx64.efi
   sbctl sign -s -o /usr/lib/systemd/boot/efi/systemd-boot64.efi.signed /usr/lib/systemd/boot/efi/systemd-bootx64.efi
 "
@@ -195,7 +198,7 @@ arch-chroot /mnt kernel-install add "${kernel_version}" \
    "/usr/lib/modules/${kernel_version}/vmlinuz"
 
 
-read -p "Enroll secure boot keys?" enroll_keys
+read -p "Enroll secure boot keys? [y/N] " enroll_keys
 enroll_keys=${enroll_keys:-N}
 case "$enroll_keys" in
   [yY]) 
@@ -271,13 +274,13 @@ install -vpm644 "$script_dir/etc/greetd-config.toml" /mnt/etc/greetd/config.toml
 
 echo -e "\nEnabling systemd services"
 systemctl --root /mnt enable \
-  systemd-boot-update-service \
+  systemd-boot-update.service \
   systemd-timesyncd.service
   systemd-resolved.service \
   NetworkManager.service \
   bluetooth.service \
-  fstrim.service \
-  coolercontrold.service \
+  fstrim.timer \
+  # coolercontrold.service \
   greetd.service
 
 echo -e '\n*** Installation script finished, cleaning up'
