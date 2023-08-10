@@ -139,6 +139,12 @@ install -vm644 "$script_dir/etc/cmdline-security.conf" /mnt/etc/cmdline.d/securi
 # Use kernel-install to install UKI kernels to the esp, and mask the mkinitcpio
 # pacman hooks. Requires a pacman hook for kernel-install that is installed later.
 install -vpm644 "$script_dir/etc/kernel-install.conf" /mnt/etc/kernel/install.conf
+
+install -m755 -d /mnt/etc/pacman.d/hooks
+ln -sf /dev/null /mnt/etc/pacman.d/hooks/60-mkinitcpio-remove.hook
+ln -sf /dev/null /mnt/etc/pacman.d/hooks/90-mkinitcpio-install.hook
+
+install -vm755 /mnt/etc/mkinitcpio.conf.d
 install -vm644 "$script_dir/etc/mkinitcpio-base.conf" /mnt/etc/mkinitcpio.conf.d/10-base.conf 
 
 # https://wiki.archlinux.org/title/Kernel_mode_setting#Early_KMS_start
@@ -176,7 +182,7 @@ arch-chroot /mnt bash -c "
   sbctl sign -s -o /usr/lib/systemd/boot/efi/systemd-boot64.efi.signed /usr/lib/systemd/boot/efi/systemd-bootx64.efi
 "
 
-bootctl update
+bootctl --root /mnt update
 
 echo -e "\nCreating new user"
 read -p "Enter username: " username
