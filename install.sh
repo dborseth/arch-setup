@@ -258,7 +258,9 @@ arch-chroot /mnt bash -c "
 install -vpm644 "$script_dir/etc/pacman.conf" /mnt/etc/pacman.conf
 
 echo -e "\nSyncing AUR packages to local repository"
-arch-chroot /mnt bash -c "sudo -u $username aur sync --noconfirm ${aur_packages[@]}"
+for package in ${aur_packages[@]}; do
+  arch-chroot /mnt bash -c "sudo -u $username aur build --noview -n $package"
+done
 
 echo -e "\nInstalling additional packages"
 extra_packages+=("${aur_packages}")
@@ -280,7 +282,7 @@ systemctl --root /mnt enable \
   NetworkManager.service \
   bluetooth.service \
   fstrim.timer \
-  # coolercontrold.service \
+  coolercontrold.service \
   greetd.service
 
 echo -e '\n*** Installation script finished, cleaning up'
