@@ -2,9 +2,6 @@
 vt = 1
 
 [default_session]
-command = "agreety --cmd /bin/sh"
+command = "tuigreet --cmd Hyprland" --time --remember --remember-session --asterisks --window-padding 16
 user = "greeter"
 
-[initial_session]
-command = "Hyprland"
-user = "db"

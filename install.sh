@@ -33,7 +33,7 @@ pacman -Sy --noconfirm git python reflector
 
 
   
-read -rp "\nShred disk before continuing? [y/N] " yn
+read -rp "Shred disk before continuing? [y/N] " yn
 yn=${yn:-N}
       
 case "$yn" in
@@ -89,7 +89,7 @@ btrfs subvolume create /mnt/@tmp
 
 # I had to put systemd-ukify in here to fix some errors when running kernel-install later. 
 base_packages=(base base-devel linux linux-firmware btrfs-progs mkinitcpio plymouth
-  systemd-ukify cryptsetup binutils elfutils sudo zsh sbctl sbsigntools fwupd git)
+  systemd-ukify cryptsetup binutils elfutils sudo zsh sbctl sbsigntools fwupd git vifm)
 
 # There are more vendor strings listed here: 
 # https://en.wikipedia.org/wiki/CPUID#Calling_CPUID
@@ -145,27 +145,36 @@ ln -sf /dev/null /mnt/etc/pacman.d/hooks/60-mkinitcpio-remove.hook
 ln -sf /dev/null /mnt/etc/pacman.d/hooks/90-mkinitcpio-install.hook
 
 
-# TODO Can't seem to get this working with multiple files
+
+# TODO Can't seem to get this working with multiple drop-in files
+FILES=()
+MODULES=()
+HOOKS=(base systemd plymouth keyboard autodetect modconf sd-vconsole sd-encrypt block filesystems fsck)
 
 install -vm755 -d /mnt/etc/mkinitcpio.conf.d
-install -vm644 "$script_dir/etc/mkinitcpio-base.conf" /mnt/etc/mkinitcpio.conf.d/10-base.conf 
 
 # https://wiki.archlinux.org/title/Kernel_mode_setting#Early_KMS_start
 if echo "${gpu_vendors[@]}" | grep -q "\bnvidia\b"; then
   # https://wiki.archlinux.org/title/NVIDIA#DRM_kernel_mode_setting
   install -vm644 "$script_dir/etc/cmdline-nvidia.conf" /mnt/etc/cmdline.d/nvidia.conf
-  install -vm644 "$script_dir/etc/mkinitcpio-nvidia.conf" /mnt/etc/mkinitcpio.conf.d/20-nvidia.conf
+  MODULES+=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)
 fi
  
 if echo "${gpu_vendors[@]}" | grep -q "\bamd\b"; then
-  install -vm644 "$script_dir/etc/mkinitcpio-amd.conf" /mnt/etc/mkinitcpio.conf.d/20-amd.conf
-  install -vm644 "$script_dir/etc/mkinitcpio-kms.conf" /mnt/etc/mkinitcpio.conf.d/20-kms.conf
+  MODULES+=(amdgpu)
+  HOOKS+=(kms)
 fi
 
 if echo "${gpu_vendors[@]}" | grep -q "\bintel\b"; then
-  install -vm644 "$script_dir/etc/mkinitcpio-intel.conf" /mnt/etc/mkinitcpio.conf.d/20-intel.conf
-  install -vm644 "$script_dir/etc/mkinitcpio-kms.conf" /mnt/etc/mkinitcpio.conf.d/20-kms.conf
+  MODULES+=(i915)
+  HOOKS+=(kms)
 fi
+
+cat > /mnt/etc/mkinitcpio.conf.d/base.conf <<EOF
+  FILES=(${FILES[@]})
+  HOOKS=(${HOOKS[@]})
+  MODULES=(${MODULES[@]})
+EOF
 
 echo -e "\nInstalling bootloader"
 bootctl --root /mnt install
@@ -184,6 +193,17 @@ kernel_versions=(/mnt/usr/lib/modules/*)
 kernel_version="${kernel_versions[0]##*/}"
 arch-chroot /mnt kernel-install add "${kernel_version}" \
    "/usr/lib/modules/${kernel_version}/vmlinuz"
+
+
+read -p "Enroll secure boot keys?" enroll_keys
+enroll_keys=${enroll_keys:-N}
+case "$enroll_keys" in
+  [yY]) 
+    arch-chroot /mnt sbctl enroll-keys --microsoft
+    ;;
+  *) 
+    ;;
+esac
 
 
 #bootctl --root /mnt update
@@ -206,46 +226,59 @@ arch-chroot /mnt bash -c "sudo -u $username $git_cmd checkout"
 
 
 
-echo -e "\nInstalling additional packages "
 extra_packages=(networkmanager iwd git bluez bluez-utils usbutils nvme-cli htop 
-  nvtop powertop util-linux apparmor snapper nvim man-db man-pages exa fzf 
+  nvtop powertop util-linux apparmor snapper man-db man-pages exa fzf 
   ripgrep fd zram-generator audit greetd greetd-agreety greetd-tuigreet 
   blueman pacman-contrib lm_sensors polkit-kde-agent xdg-desktop-portal-hyprland 
   qt6-wayland qt5-wayland slurp grim swaybg swayidle mako pipewire wireplumber 
-  ttf-cascadia-code inter-font curl tlp)
+  ttf-cascadia-code inter-font curl tlp openssh firefox kitty imv jq obsidian tmux
+  wofi waybar)
 
 aur_packages=(aurutils amdctl pacman-hook-kernel-install auto-cpufreq gtklock 
-  helix-git zsh-antidote hyprland-nvidia-git hyprpicker-git)
+  helix-git zsh-antidote hyprland-nvidia-git hyprpicker-git coolercontrol)
 
 # Sets up a local aur repository and syncs the list of aur packages to the repo.
 # The packages are then installed along with the other packages in the pacman repo. 
 # TODO Move the repository to one of the servers to remove this step
+echo -e "\n Setting up local AUR repository"
+arch-chroot /mnt install -vd /var/cache/pacman/aur -o $username
+arch-chroot /mnt bash -c "
+  sudo -u $username git clone https://aur.archlinux.org/aurutils.git /home/$username/aurutils 
+  cd /home/$username/aurutils && sudo -u $username makepkg -si --noconfirm
+  sudo -u rm -rf /home/$username/aurutils
+  sudo -u $username repo-add /var/cache/pacman/aur/aur.db.tar
+"
+
+# Add pacman config that includes a custom repository pointing to /var/cache/pacman/aur.
+# We have to do it after installing aurutils so that it doesn't try to find the 
+# custom repo before it exists.
 install -vpm644 "$script_dir/etc/pacman.conf" /mnt/etc/pacman.conf
 
-install -vd /mnt/var/cache/pacman/aur -o $username
-arch-chroot /mnt bash -c "sudo -u $username git clone https://aur.archlinux.org/aurutils.git /home/$username/aurutils" 
-arch-chroot /mnt bash -c "cd /home/$username/aurutils && sudo -u $username makepkg -si"
-arch-chroot /mnt bash -c "sudo -u $username repo-add /var/cache/pacman/aur/aur.db.tar"
-arch-chroot /mnt bash -c "sudo -u $username aur sync ${aur_packages[@]}"
-arch-chroot /mnt bash -c "sudo -u rm -rf /home/$username/aurutils"
+echo -e "\nSyncing AUR packages to local repository"
+arch-chroot /mnt bash -c "sudo -u $username aur sync --noconfirm ${aur_packages[@]}"
 
+echo -e "\nInstalling additional packages"
 extra_packages+=("${aur_packages}")
-pacman -Sy --root /mnt --noconfirm "${extra_packages[@]}"
+arch-chroot /mnt pacman -Sy --noconfirm "${extra_packages[@]}"
 
-
-
+echo -e "\nConfiguring additional packages"
 # https://wiki.archlinux.org/title/NetworkManager#systemd-resolved
 # https://wiki.archlinux.org/title/NetworkManager#Using_iwd_as_the_Wi-Fi_backend
 ln -sf /run/systemd/resolve/stub-resolv.conf /mnt/etc/resolv.conf
 install -Dvpm644 "$script_dir/etc/networkmanager-wifi.conf" /mnt/etc/NetworkManager.conf.d/wifi.conf
 
-# TODO greetd
+install -vpm644 "$script_dir/etc/greetd-config.toml" /mnt/etc/greetd/config.toml
 
+echo -e "\nEnabling systemd services"
 systemctl --root /mnt enable \
+  systemd-boot-update-service \
+  systemd-timesyncd.service
   systemd-resolved.service \
-  NetworkManager.service
-
-# TODO thermald if intel, amctl if amd. or auto-cpufreq?
+  NetworkManager.service \
+  bluetooth.service \
+  fstrim.service \
+  coolercontrold.service \
+  greetd.service
 
 echo -e '\n*** Installation script finished, cleaning up'
 
