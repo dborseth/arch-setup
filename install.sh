@@ -2,6 +2,7 @@
 set -euo pipefail
 
 
+script_dir=$(dirname "$(readlink -f "$0")")
 disk="$1"
 cpu_vendor=$(grep "vendor_id" /proc/cpuinfo | head -n 1 | awk '{print $3}')
 
@@ -129,36 +130,36 @@ arch-chroot /mnt locale-gen
 arch-chroot /mnt hwclock --systohc --utc
 
 install -m755 -d /etc/cmdline.d
-install -m644 "$conf_dir/cmdline-boot.conf" /mnt/etc/cmdline.d/boot.conf 
-install -m644 "$conf_dir/cmdline-zram.conf" /mnt/etc/cmdline.d/zram.conf 
-install -m644 "$conf_dir/cmdline-btrfs.conf" /mnt/etc/cmdline.d/btrfs.conf 
-install -m644 "$conf_dir/cmdline-security.conf" /mnt/etc/cmdline.d/security.conf 
+install -m644 "$script_dir/etc/cmdline-boot.conf" /mnt/etc/cmdline.d/boot.conf 
+install -m644 "$script_dir/etc/cmdline-zram.conf" /mnt/etc/cmdline.d/zram.conf 
+install -m644 "$script_dir/etc/cmdline-btrfs.conf" /mnt/etc/cmdline.d/btrfs.conf 
+install -m644 "$script_dir/etc/cmdline-security.conf" /mnt/etc/cmdline.d/security.conf 
 
 # https://wiki.archlinux.org/title/Unified_kernel_image#kernel-install 
 # Use kernel-install to install UKI kernels to the esp, and mask the mkinitcpio
 # pacman hooks. Requires a pacman hook for kernel-install that is installed later.
-install -pm644 "$conf_dir/kernel-install.conf" /mnt/etc/kernel/install.conf
-install -m644 "$conf_dir/mkinitcpio-base.conf" /mnt/etc/mkinitcpio.conf.d/base.conf 
+install -pm644 "$script_dir/etc/kernel-install.conf" /mnt/etc/kernel/install.conf
+install -m644 "$script_dir/etc/mkinitcpio-base.conf" /mnt/etc/mkinitcpio.conf.d/base.conf 
 ln -sf /dev/null /mnt/etc/pacman.d/hooks/60-mkinitcpio-remove.hook
 ln -sf /dev/null /mnt/etc/pacman.d/hooks/90-mkinitcpio-install.hook
 
 # https://wiki.archlinux.org/title/Kernel_mode_setting#Early_KMS_start
 if echo "${gpu_vendors[@]}" | grep -q "\bnvidia\b"; then
   # https://wiki.archlinux.org/title/NVIDIA#DRM_kernel_mode_setting
-  install -m644 "$conf_dir/cmdline.d/nvidia.conf" /etc/cmdline.d/nvidia.conf
-  install -m644 "$conf_dir/mkinitcpio.conf.d/nvidia.conf" /etc/mkinitcpio.conf.d/nvidia.conf
+  install -m644 "$script_dir/etc/cmdline.d/nvidia.conf" /etc/cmdline.d/nvidia.conf
+  install -m644 "$script_dir/etc/mkinitcpio.conf.d/nvidia.conf" /etc/mkinitcpio.conf.d/nvidia.conf
 fi
  
 if echo "${gpu_vendors[@]}" | grep -q "\bamd\b"; then
-  install -m644 "$conf_dir/mkinitcpio.conf.d/amd.conf" /etc/mkinitcpio.conf.d/amd.conf
+  install -m644 "$script_dir/etc/mkinitcpio.conf.d/amd.conf" /etc/mkinitcpio.conf.d/amd.conf
 fi
 
 if echo "${gpu_vendors[@]}" | grep -q "\bintel\b"; then
-  install -m644 "$conf_dir/mkinitcpio.conf.d/intel.conf" /etc/mkinitcpio.conf.d/intel.conf
+  install -m644 "$script_dir/etc/mkinitcpio.conf.d/intel.conf" /etc/mkinitcpio.conf.d/intel.conf
 fi
 
 bootctl --root /mnt install
-install -pm644 "$conf_dir/loader.conf" /efi/loader/loader.conf
+install -pm644 "$script_dir/etc/loader.conf" /efi/loader/loader.conf
 
 # https://github.com/swsnr/dotfiles/blob/db42fe95fceeac68e4fbe489aed5e310f65b1ae7/arch/bootstrap-from-iso.bash#L131
 kernel_versions=(/mnt/usr/lib/modules/*)
@@ -184,7 +185,7 @@ usermod -R /mnt -aG wheel,storage,power,audit "$username"
 passwd -R /mnt "$username"
 
 install -dm750 /etc/sudoers.d/
-install -pm600 "$conf_dir/sudoers-wheel" /etc/sudoers.d/wheel
+install -pm600 "$script_dir/etc/sudoers-wheel" /etc/sudoers.d/wheel
 
 # Set up dotfiles in home as a bare repository
 sudo -R /mnt -u "$username" bash -c 'git clone --bare https://github.com/dborseth/.dotfiles.git $HOME/.dotfiles'
@@ -209,7 +210,7 @@ aur_packages=(aurutils amdctl pacman-hook-kernel-install auto-cpufreq gtklock
 # Sets up a local aur repository and syncs the list of aur packages to the repo.
 # The packages are then installed along with the other packages in the pacman repo. 
 # TODO Move the repository to one of the servers to remove this step
-install -pm644 "$conf_dir/pacman.conf" /etc/pacman.conf
+install -pm644 "$script_dir/etc/pacman.conf" /etc/pacman.conf
 
 sudo -R /mnt -u "$username" bash -c "git clone https://aur.archlinux.org/aurutils.git && cd aurutils && makepkg -si"
 install -d /mnt/var/cache/pacman/aur -o $username
@@ -224,7 +225,7 @@ pacman -S --root /mnt --noconfirm "${extra_packages[@]}"
 # https://wiki.archlinux.org/title/NetworkManager#systemd-resolved
 # https://wiki.archlinux.org/title/NetworkManager#Using_iwd_as_the_Wi-Fi_backend
 ln -sf /run/systemd/resolve/stub-resolv.conf /mnt/etc/resolv.conf
-install -Dpm644 "$conf_dir/networkmanager-wifi.conf" /mnt/etc/NetworkManager.conf.d/wifi.conf
+install -Dpm644 "$script_dir/etc/networkmanager-wifi.conf" /mnt/etc/NetworkManager.conf.d/wifi.conf
 
 # TODO greetd
 
