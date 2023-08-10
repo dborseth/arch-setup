@@ -195,15 +195,14 @@ install -vdm750 /mnt/etc/sudoers.d/
 install -vpm600 "$script_dir/etc/sudoers-wheel" /mnt/etc/sudoers.d/wheel
 
 # Set up dotfiles in home as a bare repository
-#sudo -R /mnt -u "$username" bash -c 'git clone --bare https://github.com/dborseth/.dotfiles.git $HOME/.dotfiles'
-#sudo -R /mnt -u "$username" bash -c "alias dotfiles='git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME\'"
-#sudo -R /mnt -u "$username" bash -c 'dotfiles config --local status.showUntrackedFiles no'
-#sudo -R /mnt -u "$username" bash -c 'dotfiles checkout'
+arch-chroot /mnt bash -c "sudo -u $username git clone --bare https://github.com/dborseth/.dotfiles.git $HOME/.dotfiles"
+arch-chroot /mnt bash -c "sudo -u $username alias dotfiles='git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME\'"
+arch-chroot /mnt bash -c "sudo -u $username dotfiles config --local status.showUntrackedFiles no"
+arch-chroot /mnt bash -c "sudo -u $username dotfiles checkout"
 
 
 
 echo -e "\nInstalling additional packages "
-
 extra_packages=(networkmanager iwd git bluez bluez-utils usbutils nvme-cli htop 
   nvtop powertop util-linux apparmor snapper nvim man-db man-pages exa fzf 
   ripgrep fd zram-generator audit greetd greetd-agreety greetd-tuigreet 
@@ -219,10 +218,10 @@ aur_packages=(aurutils amdctl pacman-hook-kernel-install auto-cpufreq gtklock
 # TODO Move the repository to one of the servers to remove this step
 install -vpm644 "$script_dir/etc/pacman.conf" /mnt/etc/pacman.conf
 
-sudo -R /mnt -u "$username" bash -c "git clone https://aur.archlinux.org/aurutils.git && cd aurutils && makepkg -si"
+arch-chroot /mnt bash -c "git clone https://aur.archlinux.org/aurutils.git && cd aurutils && makepkg -si"
 install -vd /mnt/var/cache/pacman/aur -o $username
-sudo -R /mnt -u "$username" bash -c "repo-add /var/cache/pacman/aur/aur.db.tar"
-sudo -R /mnt -u "$username" bash -c "aur sync ${aur_packages[@]}"
+arch-chroot /mnt bash -c "repo-add /var/cache/pacman/aur/aur.db.tar"
+arch-chroot /mnt bash -c "aur sync ${aur_packages[@]}"
 
 extra_packages+=("${aur_packages}")
 pacman -S --root /mnt --noconfirm "${extra_packages[@]}"
