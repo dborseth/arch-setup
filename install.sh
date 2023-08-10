@@ -33,7 +33,7 @@ pacman -Sy --noconfirm git python reflector
 
 
   
-read -rp "Shred disk before continuing? [y/N] " yn
+read -rp "\nShred disk before continuing? [y/N] " yn
 yn=${yn:-N}
       
 case "$yn" in
@@ -89,7 +89,7 @@ btrfs subvolume create /mnt/@tmp
 
 # I had to put systemd-ukify in here to fix some errors when running kernel-install later. 
 base_packages=(base base-devel linux linux-firmware btrfs-progs mkinitcpio plymouth
-  systemd-ukify cryptsetup binutils elfutils sudo zsh sbctl sbsigntools fwupd)
+  systemd-ukify cryptsetup binutils elfutils sudo zsh sbctl sbsigntools fwupd git)
 
 # There are more vendor strings listed here: 
 # https://en.wikipedia.org/wiki/CPUID#Calling_CPUID
@@ -144,6 +144,9 @@ install -m755 -d /mnt/etc/pacman.d/hooks
 ln -sf /dev/null /mnt/etc/pacman.d/hooks/60-mkinitcpio-remove.hook
 ln -sf /dev/null /mnt/etc/pacman.d/hooks/90-mkinitcpio-install.hook
 
+
+# TODO Can't seem to get this working with multiple files
+
 install -vm755 -d /mnt/etc/mkinitcpio.conf.d
 install -vm644 "$script_dir/etc/mkinitcpio-base.conf" /mnt/etc/mkinitcpio.conf.d/10-base.conf 
 
@@ -195,10 +198,11 @@ install -vdm750 /mnt/etc/sudoers.d/
 install -vpm600 "$script_dir/etc/sudoers-wheel" /mnt/etc/sudoers.d/wheel
 
 # Set up dotfiles in home as a bare repository
-arch-chroot /mnt bash -c "sudo -u $username git clone --bare https://github.com/dborseth/.dotfiles.git $HOME/.dotfiles"
-arch-chroot /mnt bash -c "sudo -u $username alias dotfiles='git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME\'"
-arch-chroot /mnt bash -c "sudo -u $username dotfiles config --local status.showUntrackedFiles no"
-arch-chroot /mnt bash -c "sudo -u $username dotfiles checkout"
+# https://www.atlassian.com/git/tutorials/dotfiles
+git_cmd="git --git-dir=/home/$username/.dotfiles/ --work-tree=/home/$username"
+arch-chroot /mnt bash -c "sudo -u $username git clone --bare https://github.com/dborseth/.dotfiles.git /home/$username/.dotfiles"
+arch-chroot /mnt bash -c "sudo -u $username $git_cmd config --local status.showUntrackedFiles no"
+arch-chroot /mnt bash -c "sudo -u $username $git_cmd checkout"
 
 
 
@@ -218,13 +222,15 @@ aur_packages=(aurutils amdctl pacman-hook-kernel-install auto-cpufreq gtklock
 # TODO Move the repository to one of the servers to remove this step
 install -vpm644 "$script_dir/etc/pacman.conf" /mnt/etc/pacman.conf
 
-arch-chroot /mnt bash -c "git clone https://aur.archlinux.org/aurutils.git && cd aurutils && makepkg -si"
 install -vd /mnt/var/cache/pacman/aur -o $username
-arch-chroot /mnt bash -c "repo-add /var/cache/pacman/aur/aur.db.tar"
-arch-chroot /mnt bash -c "aur sync ${aur_packages[@]}"
+arch-chroot /mnt bash -c "sudo -u $username git clone https://aur.archlinux.org/aurutils.git /home/$username/aurutils" 
+arch-chroot /mnt bash -c "cd /home/$username/aurutils && sudo -u $username makepkg -si"
+arch-chroot /mnt bash -c "sudo -u $username repo-add /var/cache/pacman/aur/aur.db.tar"
+arch-chroot /mnt bash -c "sudo -u $username aur sync ${aur_packages[@]}"
+arch-chroot /mnt bash -c "sudo -u rm -rf /home/$username/aurutils"
 
 extra_packages+=("${aur_packages}")
-pacman -S --root /mnt --noconfirm "${extra_packages[@]}"
+pacman -Sy --root /mnt --noconfirm "${extra_packages[@]}"
 
 
 
