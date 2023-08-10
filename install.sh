@@ -21,12 +21,6 @@ done <<< "$gpus"
 
 
 
-systemd-firstboot --force \
-  --keymap=no-latin1 \
-  --locale=en_US.UTF-8 \
-  --timezone=Europe/Oslo \
-  --prompt-root-password \
-  --prompt-hostname 
 
 timedatectl set-ntp true
 
@@ -99,9 +93,9 @@ base_packages=(base base-devel linux linux-firmware btrfs-progs
 # There are more vendor strings listed here: 
 # https://en.wikipedia.org/wiki/CPUID#Calling_CPUID
 if [[ "$cpu_vendor" == "GenuineIntel" ]]; then
-  base_packages+=(intel-ucode thermald)
+  base_packages+=(intel-ucode)
 elif [[ "$cpu_vendor" == "AuthenticAMD" ]]; then
-  base_packages+=(amd-ucode amdctl)
+  base_packages+=(amd-ucode)
 fi
 
 if echo "${gpu_vendors[@]}" | grep -q "\bnvidia\b"; then
@@ -122,8 +116,13 @@ pacstrap /mnt "${base_packages[@]}"
 
 
 
-# Copies basic system settings previously set from the host 
-systemd-firstboot --force --root /mnt --copy
+systemd-firstboot --force --root /mnt \
+  --keymap=no-latin1 \
+  --locale=en_US.UTF-8 \
+  --timezone=Europe/Oslo \
+  --prompt-root-password \
+  --prompt-hostname 
+
 sed -i "s/^#\(en_US.UTF-8\)/\1/" /mnt/etc/locale.gen
 sed -i "s/^#\(no_NB.UTF-8\)/\1/" /mnt/etc/locale.gen
 arch-chroot /mnt locale-gen
@@ -237,5 +236,5 @@ systemctl --root /mnt enable \
 
 echo -e '\n*** Installation script finished, cleaning up'
 
-#umount -R /mnt
-#cryptsetup luksClose root
+umount -R /mnt
+cryptsetup luksClose root
