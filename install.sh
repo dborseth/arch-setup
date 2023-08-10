@@ -139,23 +139,23 @@ install -vm644 "$script_dir/etc/cmdline-security.conf" /mnt/etc/cmdline.d/securi
 # Use kernel-install to install UKI kernels to the esp, and mask the mkinitcpio
 # pacman hooks. Requires a pacman hook for kernel-install that is installed later.
 install -vpm644 "$script_dir/etc/kernel-install.conf" /mnt/etc/kernel/install.conf
-install -vm644 "$script_dir/etc/mkinitcpio-base.conf" /mnt/etc/mkinitcpio.conf.d/base.conf 
+install -vm644 "$script_dir/etc/mkinitcpio-base.conf" /mnt/etc/mkinitcpio.conf.d/10-base.conf 
 
 # https://wiki.archlinux.org/title/Kernel_mode_setting#Early_KMS_start
 if echo "${gpu_vendors[@]}" | grep -q "\bnvidia\b"; then
   # https://wiki.archlinux.org/title/NVIDIA#DRM_kernel_mode_setting
   install -vm644 "$script_dir/etc/cmdline-nvidia.conf" /mnt/etc/cmdline.d/nvidia.conf
-  install -vm644 "$script_dir/etc/mkinitcpio-nvidia.conf" /mnt/etc/mkinitcpio.conf.d/nvidia.conf
+  install -vm644 "$script_dir/etc/mkinitcpio-nvidia.conf" /mnt/etc/mkinitcpio.conf.d/20-nvidia.conf
 fi
  
 if echo "${gpu_vendors[@]}" | grep -q "\bamd\b"; then
-  install -vm644 "$script_dir/etc/mkinitcpio-amd.conf" /mnt/etc/mkinitcpio.conf.d/amd.conf
-  install -vm644 "$script_dir/etc/mkinitcpio-kms.conf" /mnt/etc/mkinitcpio.conf.d/kms.conf
+  install -vm644 "$script_dir/etc/mkinitcpio-amd.conf" /mnt/etc/mkinitcpio.conf.d/20-amd.conf
+  install -vm644 "$script_dir/etc/mkinitcpio-kms.conf" /mnt/etc/mkinitcpio.conf.d/20-kms.conf
 fi
 
 if echo "${gpu_vendors[@]}" | grep -q "\bintel\b"; then
-  install -vm644 "$script_dir/etc/mkinitcpio-intel.conf" /mnt/etc/mkinitcpio.conf.d/intel.conf
-  install -vm644 "$script_dir/etc/mkinitcpio-kms.conf" /mnt/etc/mkinitcpio.conf.d/kms.conf
+  install -vm644 "$script_dir/etc/mkinitcpio-intel.conf" /mnt/etc/mkinitcpio.conf.d/20-intel.conf
+  install -vm644 "$script_dir/etc/mkinitcpio-kms.conf" /mnt/etc/mkinitcpio.conf.d/20-kms.conf
 fi
 
 echo -e "\nInstalling bootloader"
@@ -169,18 +169,19 @@ kernel_version="${kernel_versions[0]##*/}"
 arch-chroot /mnt kernel-install add "${kernel_version}" \
    "/usr/lib/modules/${kernel_version}/vmlinuz"
 
-echo -e "\n Setting up secure boot"
+echo -e "\nSetting up secure boot"
 arch-chroot /mnt bash -c "
   sbctl create-keys
   sbctl sign -s -o /usr/lib/fwupd/efi/fwupdx64.efi.signed /usr/lib/fwupd/efi/fwupdx64.efi
   sbctl sign -s -o /usr/lib/systemd/boot/efi/systemd-boot64.efi.signed /usr/lib/systemd/boot/efi/systemd-bootx64.efi
 "
 
+bootctl update
 
 echo -e "\nCreating new user"
-readline -p "Enter username: " username
+read -p "Enter username: " username
 useradd -R /mnt -m -s /usr/bin/zsh "$username"
-usermod -R /mnt -aG wheel,storage,power,audit "$username"
+usermod -R /mnt -aG wheel,storage,power "$username"
 passwd -R /mnt "$username"
 
 install -vdm750 /mnt/etc/sudoers.d/
