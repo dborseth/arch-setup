@@ -275,7 +275,7 @@ install -vpm644 "$script_dir/etc/greetd-config.toml" /mnt/etc/greetd/config.toml
 echo -e "\nEnabling systemd services"
 systemctl --root /mnt enable \
   systemd-boot-update.service \
-  systemd-timesyncd.service
+  systemd-timesyncd.service \
   systemd-resolved.service \
   NetworkManager.service \
   bluetooth.service \
