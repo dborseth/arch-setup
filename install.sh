@@ -150,32 +150,34 @@ fi
  
 if echo "${gpu_vendors[@]}" | grep -q "\bamd\b"; then
   install -vm644 "$script_dir/etc/mkinitcpio-amd.conf" /mnt/etc/mkinitcpio.conf.d/amd.conf
+  install -vm644 "$script_dir/etc/mkinitcpio-kms.conf" /mnt/etc/mkinitcpio.conf.d/kms.conf
 fi
 
 if echo "${gpu_vendors[@]}" | grep -q "\bintel\b"; then
   install -vm644 "$script_dir/etc/mkinitcpio-intel.conf" /mnt/etc/mkinitcpio.conf.d/intel.conf
+  install -vm644 "$script_dir/etc/mkinitcpio-kms.conf" /mnt/etc/mkinitcpio.conf.d/kms.conf
 fi
 
+echo -e "\nInstalling bootloader"
 bootctl --root /mnt install
 install -vpm644 "$script_dir/etc/loader.conf" /mnt/efi/loader/loader.conf
 
+echo -e "\nInstalling kernel"
 # https://github.com/swsnr/dotfiles/blob/db42fe95fceeac68e4fbe489aed5e310f65b1ae7/arch/bootstrap-from-iso.bash#L131
 kernel_versions=(/mnt/usr/lib/modules/*)
 kernel_version="${kernel_versions[0]##*/}"
 arch-chroot /mnt kernel-install add "${kernel_version}" \
    "/usr/lib/modules/${kernel_version}/vmlinuz"
 
+echo -e "\n Setting up secure boot"
 arch-chroot /mnt bash -c "
   sbctl create-keys
   sbctl sign -s -o /usr/lib/fwupd/efi/fwupdx64.efi.signed /usr/lib/fwupd/efi/fwupdx64.efi
   sbctl sign -s -o /usr/lib/systemd/boot/efi/systemd-boot64.efi.signed /usr/lib/systemd/boot/efi/systemd-bootx64.efi
-  sbctl verify
 "
 
 
 echo -e "\nCreating new user"
-
-# Create user
 readline -p "Enter username: " username
 useradd -R /mnt -m -s /usr/bin/zsh "$username"
 usermod -R /mnt -aG wheel,storage,power,audit "$username"
