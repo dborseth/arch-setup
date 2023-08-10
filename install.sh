@@ -88,7 +88,7 @@ btrfs subvolume create /mnt/@tmp
 
 
 # I had to put systemd-ukify in here to fix some errors when running kernel-install later. 
-base_packages=(base base-devel linux linux-firmware btrfs-progs 
+base_packages=(base base-devel linux linux-firmware btrfs-progs mkinitcpio plymouth
   systemd-ukify cryptsetup binutils elfutils sudo zsh sbctl sbsigntools fwupd)
 
 # There are more vendor strings listed here: 
@@ -144,7 +144,7 @@ install -m755 -d /mnt/etc/pacman.d/hooks
 ln -sf /dev/null /mnt/etc/pacman.d/hooks/60-mkinitcpio-remove.hook
 ln -sf /dev/null /mnt/etc/pacman.d/hooks/90-mkinitcpio-install.hook
 
-install -vm755 /mnt/etc/mkinitcpio.conf.d
+install -vm755 -d /mnt/etc/mkinitcpio.conf.d
 install -vm644 "$script_dir/etc/mkinitcpio-base.conf" /mnt/etc/mkinitcpio.conf.d/10-base.conf 
 
 # https://wiki.archlinux.org/title/Kernel_mode_setting#Early_KMS_start
@@ -168,13 +168,6 @@ echo -e "\nInstalling bootloader"
 bootctl --root /mnt install
 install -vpm644 "$script_dir/etc/loader.conf" /mnt/efi/loader/loader.conf
 
-echo -e "\nInstalling kernel"
-# https://github.com/swsnr/dotfiles/blob/db42fe95fceeac68e4fbe489aed5e310f65b1ae7/arch/bootstrap-from-iso.bash#L131
-kernel_versions=(/mnt/usr/lib/modules/*)
-kernel_version="${kernel_versions[0]##*/}"
-arch-chroot /mnt kernel-install add "${kernel_version}" \
-   "/usr/lib/modules/${kernel_version}/vmlinuz"
-
 echo -e "\nSetting up secure boot"
 arch-chroot /mnt bash -c "
   sbctl create-keys
@@ -182,7 +175,15 @@ arch-chroot /mnt bash -c "
   sbctl sign -s -o /usr/lib/systemd/boot/efi/systemd-boot64.efi.signed /usr/lib/systemd/boot/efi/systemd-bootx64.efi
 "
 
-bootctl --root /mnt update
+echo -e "\nInstalling kernel"
+# https://github.com/swsnr/dotfiles/blob/db42fe95fceeac68e4fbe489aed5e310f65b1ae7/arch/bootstrap-from-iso.bash#L131
+kernel_versions=(/mnt/usr/lib/modules/*)
+kernel_version="${kernel_versions[0]##*/}"
+arch-chroot /mnt kernel-install add "${kernel_version}" \
+   "/usr/lib/modules/${kernel_version}/vmlinuz"
+
+
+#bootctl --root /mnt update
 
 echo -e "\nCreating new user"
 read -p "Enter username: " username
@@ -194,10 +195,10 @@ install -vdm750 /mnt/etc/sudoers.d/
 install -vpm600 "$script_dir/etc/sudoers-wheel" /mnt/etc/sudoers.d/wheel
 
 # Set up dotfiles in home as a bare repository
-sudo -R /mnt -u "$username" bash -c 'git clone --bare https://github.com/dborseth/.dotfiles.git $HOME/.dotfiles'
-sudo -R /mnt -u "$username" bash -c "alias dotfiles='git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME\'"
-sudo -R /mnt -u "$username" bash -c 'dotfiles config --local status.showUntrackedFiles no'
-sudo -R /mnt -u "$username" bash -c 'dotfiles checkout'
+#sudo -R /mnt -u "$username" bash -c 'git clone --bare https://github.com/dborseth/.dotfiles.git $HOME/.dotfiles'
+#sudo -R /mnt -u "$username" bash -c "alias dotfiles='git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME\'"
+#sudo -R /mnt -u "$username" bash -c 'dotfiles config --local status.showUntrackedFiles no'
+#sudo -R /mnt -u "$username" bash -c 'dotfiles checkout'
 
 
 
@@ -205,7 +206,7 @@ echo -e "\nInstalling additional packages "
 
 extra_packages=(networkmanager iwd git bluez bluez-utils usbutils nvme-cli htop 
   nvtop powertop util-linux apparmor snapper nvim man-db man-pages exa fzf 
-  ripgrep fd zram-generator audit plymouth greetd greetd-agreety greetd-tuigreet 
+  ripgrep fd zram-generator audit greetd greetd-agreety greetd-tuigreet 
   blueman pacman-contrib lm_sensors polkit-kde-agent xdg-desktop-portal-hyprland 
   qt6-wayland qt5-wayland slurp grim swaybg swayidle mako pipewire wireplumber 
   ttf-cascadia-code inter-font curl tlp)
