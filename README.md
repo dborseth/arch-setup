@@ -4,10 +4,10 @@ Before starting, make sure secure boot is disabled and in setup mode. Then do th
 loadkeys no-latin1
 iwctl station wlan0 connect ...
 
-curl -sSO https://raw.githubusercontent.com/dborseth/arch-setup/main/install.sh
-chmod +x install.sh
+pacman -Sy git
 
-./install.sh /dev/nvme0n1
+git clone https://github.com/dborseth/arch-setup.git
+./arch-setup/install.sh /dev/nvme0n1
 ```
 
-Reboot and remove the usb drive. 
+Reboot and remove the usb drive. Turn on secure boot in bios. 
