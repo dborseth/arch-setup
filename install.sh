@@ -256,14 +256,15 @@ arch-chroot /mnt bash -c "
 # We have to do it after installing aurutils so that it doesn't try to find the 
 # custom repo before it exists.
 install -vpm644 "$script_dir/etc/pacman.conf" /mnt/etc/pacman.conf
+arch-chroot /mnt pacman -Sy
 
 echo -e "\nSyncing AUR packages to local repository"
 for package in ${aur_packages[@]}; do
-  arch-chroot /mnt bash -c "sudo -u $username aur build --noview -n $package"
+  arch-chroot /mnt bash -c "sudo -u $username aur sync --noview -n $package"
 done
 
 echo -e "\nInstalling additional packages"
-extra_packages+=("${aur_packages}")
+extra_packages+=("${aur_packages[@]}")
 arch-chroot /mnt pacman -Sy --noconfirm "${extra_packages[@]}"
 
 echo -e "\nConfiguring additional packages"
