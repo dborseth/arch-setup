@@ -89,7 +89,7 @@ btrfs subvolume create /mnt/@tmp
 
 # I had to put systemd-ukify in here to fix some errors when running kernel-install later. 
 base_packages=(base base-devel linux linux-firmware btrfs-progs mkinitcpio plymouth
-  systemd-ukify cryptsetup binutils elfutils sudo zsh sbctl sbsigntools fwupd git vifm)
+  systemd-ukify cryptsetup binutils elfutils sudo zsh sbctl sbsigntools fwupd git vifm pacman-contrib)
 
 # There are more vendor strings listed here: 
 # https://en.wikipedia.org/wiki/CPUID#Calling_CPUID
@@ -100,7 +100,6 @@ elif [[ "$cpu_vendor" == "AuthenticAMD" ]]; then
 fi
 
 if echo "${gpu_vendors[@]}" | grep -q "\bnvidia\b"; then
-  # Use dkms for nvidia because it usually works
   base_packages+=("dkms" "linux-headers" "nvidia-dkms" "nvidia-utils" "nvidia-settings" "nvidia-smi")
 fi
  
@@ -129,6 +128,10 @@ sed -i "s/^#\(no_NB.UTF-8\)/\1/" /mnt/etc/locale.gen
 arch-chroot /mnt locale-gen
 arch-chroot /mnt hwclock --systohc --utc
 
+install -vm755 -d /mnt/etc/modprobe.d
+install -vm644 "$script_dir/etc/modprobe-blacklist.conf" /mnt/etc/modprobe.d/blacklist.conf
+install -vm644 "$script_dir/etc/modprobe-power.conf" /mnt/etc/modprobe.d/power.conf
+
 install -vm755 -d /mnt/etc/cmdline.d
 install -vm644 "$script_dir/etc/cmdline-boot.conf" /mnt/etc/cmdline.d/boot.conf 
 install -vm644 "$script_dir/etc/cmdline-zswap.conf" /mnt/etc/cmdline.d/zswap.conf 
@@ -149,14 +152,14 @@ ln -sf /dev/null /mnt/etc/pacman.d/hooks/90-mkinitcpio-install.hook
 # TODO Can't seem to get this working with multiple drop-in files
 FILES=()
 MODULES=()
-HOOKS=(base systemd plymouth keyboard autodetect modconf sd-vconsole sd-encrypt block filesystems fsck)
+HOOKS=(base systemd keyboard autodetect modconf sd-vconsole sd-encrypt block filesystems fsck)
 
 install -vm755 -d /mnt/etc/mkinitcpio.conf.d
 
 # https://wiki.archlinux.org/title/Kernel_mode_setting#Early_KMS_start
 if echo "${gpu_vendors[@]}" | grep -q "\bnvidia\b"; then
   # https://wiki.archlinux.org/title/NVIDIA#DRM_kernel_mode_setting
-  install -vm644 "$script_dir/etc/cmdline-nvidia.conf" /mnt/etc/cmdline.d/nvidia.conf
+  install -vm644 "$script_dir/etc/modprobe-nvidia.conf" /mnt/etc/modprobe.d/nvidia.conf
   MODULES+=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)
 fi
  
@@ -229,16 +232,22 @@ arch-chroot /mnt bash -c "sudo -u $username $git_cmd checkout"
 
 
 
-extra_packages=(networkmanager iwd git bluez bluez-utils usbutils nvme-cli htop 
-  nvtop powertop util-linux apparmor snapper man-db man-pages exa fzf 
-  ripgrep fd zram-generator audit greetd greetd-agreety greetd-tuigreet 
-  blueman pacman-contrib lm_sensors polkit-kde-agent xdg-desktop-portal-hyprland 
-  qt6-wayland qt5-wayland slurp grim swaybg swayidle mako pipewire wireplumber 
-  ttf-cascadia-code inter-font curl tlp openssh firefox kitty imv jq obsidian tmux
-  wofi waybar)
+extra_packages=(
+  networkmanager iwd openssh 
+  blueman bluez bluez-utils usbutils nvme-cli 
+  htop nvtop powertop tlp 
+  apparmor audit snapper zram-generator lm_sensors 
+  git man-db man-pages util-linux exa fzf ripgrep fd curl imv jq tmux  
+  greetd greetd-tuigreet 
+  polkit-gnome xdg-desktop-portal-hyprland qt6-wayland qt5-wayland slurp grim 
+  swaybg swayidle mako wofi kitty pipewire wireplumber  gtk-engine-murrine
+  ttf-cascadia-code adobe-source-serif-fonts inter-font 
+  tpm2-tools
+)
 
 aur_packages=(aurutils amdctl pacman-hook-kernel-install auto-cpufreq gtklock 
-  helix-git zsh-antidote hyprland-nvidia-git hyprpicker-git coolercontrol)
+  helix-git zsh-antidote hyprland-nvidia-git hyprpicker-git plymouth-theme-neat
+  ironbar-git)
 
 # Sets up a local aur repository and syncs the list of aur packages to the repo.
 # The packages are then installed along with the other packages in the pacman repo. 
@@ -268,12 +277,22 @@ extra_packages+=("${aur_packages[@]}")
 arch-chroot /mnt pacman -Sy --noconfirm "${extra_packages[@]}"
 
 echo -e "\nConfiguring additional packages"
+
+sudo ln -s /usr/share/fontconfig/conf.avail/70-no-bitmaps.conf /etc/fonts/conf.d
+sudo ln -s /usr/share/fontconfig/conf.avail/10-sub-pixel-rgb.conf /etc/fonts/conf.d
+sudo ln -s /usr/share/fontconfig/fonts/conf.avail/11-lcdfilter-default.conf /etc/fonts/conf.d
+install -vpm644 "$script_dir/etc/fonts-freetyp2.sh" /etc/profile.d/freetype2.sh
+install -vpm644 "$script_dir/etc/fonts-local.conf" /etc/fonts/local.conf 
+
+install -vpm644 "$script_dir/etc/plymouthd.conf" /mnt/etc/plymouth/plymouthd.conf
+install -vpm644 "$script_dir/etc/greetd-config.toml" /mnt/etc/greetd/config.toml
+
 # https://wiki.archlinux.org/title/NetworkManager#systemd-resolved
 # https://wiki.archlinux.org/title/NetworkManager#Using_iwd_as_the_Wi-Fi_backend
+install -vm755 -d /mnt/etc/NetworkManager.conf.d
+install -vpm644 "$script_dir/etc/networkmanager-wifi.conf" /mnt/etc/NetworkManager.conf.d/wifi.conf
 ln -sf /run/systemd/resolve/stub-resolv.conf /mnt/etc/resolv.conf
-install -Dvpm644 "$script_dir/etc/networkmanager-wifi.conf" /mnt/etc/NetworkManager.conf.d/wifi.conf
 
-install -vpm644 "$script_dir/etc/greetd-config.toml" /mnt/etc/greetd/config.toml
 
 echo -e "\nEnabling systemd services"
 systemctl --root /mnt enable \
@@ -283,8 +302,8 @@ systemctl --root /mnt enable \
   NetworkManager.service \
   bluetooth.service \
   fstrim.timer \
-  coolercontrold.service \
-  greetd.service
+  greetd.service \
+  apparmor.service
 
 echo -e '\n*** Installation script finished, cleaning up'
 
