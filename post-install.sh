@@ -1,31 +1,16 @@
 #!/bin/sh
 
-antidote update
-
-gsettings set org.gnome.desktop.interface gtk-theme "Nordic"
-gsettings set org.gnome.desktop.wm.preferences theme "Nordic"
-
-# Using the yubikey for..
-# - yk unlocs the disk, autologin ?
-# - yk unlocs the disk, pin login ?
-# - yk+pin unlocs the disk, autologin ?
-# - TPM unlocks disk, yk for login ?
-# - TPM unlocks disk, pin login
-# - TPM+yk unlocks disk?
-aur_packages=(clickhouse-client-bin terraform-ls cmake-language-server)
+aur_packages=(clickhouse-client-bin terraform-ls cmake-language-server nvidia-container-toolkit)
 
 packages=(
-  pcsc-tools 
   yubikey-personalization 
   yubikey-personalization-gui 
-  yubikey-full-disk-encryption 
-  libfido2
-  opensc
 
   xh
   rsync
   rclone
   devtools
+
   clickhouse-client-bin
 
   docker
@@ -74,22 +59,24 @@ packages=(
   cmake
   cmake-language-server
   meson
+  ninja
+  valgrind
 
-  firefox
   obsidian
   font-manager
 )
 
 sudo pacman -Sy "${packages[@]}"
 
-
-# Install rust toolchains  
+echo -e "\nSetting up Rust"  
 rustup default stable
 rustup toolchain install nightly
 rustup component add rust-src
 rustup component add rust-analyzer
 
+echo -e "\nAdding groups"
+usermod --append --groups docker $USER
 
-
-
-systemctl enable pcscd.service
+echo -e "\nStarting services"
+systemctl enable --now \
+  docker.service

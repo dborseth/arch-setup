@@ -238,16 +238,17 @@ extra_packages=(
   htop nvtop powertop tlp 
   apparmor audit snapper zram-generator lm_sensors 
   git man-db man-pages util-linux exa fzf ripgrep fd curl imv jq tmux  
-  greetd greetd-tuigreet 
+  greetd greetd-agreety firefox wireguard-tools
   polkit-gnome xdg-desktop-portal-hyprland qt6-wayland qt5-wayland slurp grim 
-  swaybg swayidle mako wofi kitty pipewire wireplumber  gtk-engine-murrine
-  ttf-cascadia-code adobe-source-serif-fonts inter-font 
-  tpm2-tools
+  swaybg swayidle mako wofi kitty gtk-engine-murrine
+  pipewire wireplumber pipewire-jack pipewire-alsa pipewire-pulseaudio pavucontrol
+  ttf-cascadia-code noto-fonts adobe-source-serif-fonts inter-font 
+  tpm2-tools libfido2 pcsc-tools pam-u2f
 )
 
 aur_packages=(aurutils amdctl pacman-hook-kernel-install auto-cpufreq gtklock 
   helix-git zsh-antidote hyprland-nvidia-git hyprpicker-git plymouth-theme-neat
-  ironbar-git)
+  ironbar-git blueberry-wayland colloid-gtk-theme colloid-icon-theme apple_cursor)
 
 # Sets up a local aur repository and syncs the list of aur packages to the repo.
 # The packages are then installed along with the other packages in the pacman repo. 
@@ -278,14 +279,30 @@ arch-chroot /mnt pacman -Sy --noconfirm "${extra_packages[@]}"
 
 echo -e "\nConfiguring additional packages"
 
-sudo ln -s /usr/share/fontconfig/conf.avail/70-no-bitmaps.conf /etc/fonts/conf.d
-sudo ln -s /usr/share/fontconfig/conf.avail/10-sub-pixel-rgb.conf /etc/fonts/conf.d
-sudo ln -s /usr/share/fontconfig/fonts/conf.avail/11-lcdfilter-default.conf /etc/fonts/conf.d
-install -vpm644 "$script_dir/etc/fonts-freetyp2.sh" /etc/profile.d/freetype2.sh
+arch-chroot /mnt bash -c"
+  ln -sf /usr/share/fontconfig/conf.avail/70-no-bitmaps.conf /etc/fonts/conf.d
+  ln -sf /usr/share/fontconfig/conf.avail/10-sub-pixel-rgb.conf /etc/fonts/conf.d
+  ln -sf /usr/share/fontconfig/fonts/conf.avail/11-lcdfilter-default.conf /etc/fonts/conf.d
+"
+install -vpm644 "$script_dir/etc/fonts-freetype2.sh" /etc/profile.d/freetype2.sh
 install -vpm644 "$script_dir/etc/fonts-local.conf" /etc/fonts/local.conf 
 
+install -m755 -d /mnt/usr/share/backgrounds
+install -vpm755 "$script_dir/usr/default.png" /usr/share/backgrounds/default.png
 install -vpm644 "$script_dir/etc/plymouthd.conf" /mnt/etc/plymouth/plymouthd.conf
-install -vpm644 "$script_dir/etc/greetd-config.toml" /mnt/etc/greetd/config.toml
+
+cat > /mnt/etc/greetd/config.toml <<EOF
+[terminal]
+vt = 1
+
+[default_session]
+command = "agreety --cmd Hyprland"
+user = "greeter"
+
+[initial_session]
+command = "Hyprland"
+user = "$username"
+EOF
 
 # https://wiki.archlinux.org/title/NetworkManager#systemd-resolved
 # https://wiki.archlinux.org/title/NetworkManager#Using_iwd_as_the_Wi-Fi_backend
@@ -303,7 +320,9 @@ systemctl --root /mnt enable \
   bluetooth.service \
   fstrim.timer \
   greetd.service \
-  apparmor.service
+  apparmor.service \
+  pcscd.service
+
 
 echo -e '\n*** Installation script finished, cleaning up'
 
