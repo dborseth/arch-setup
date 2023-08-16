@@ -29,7 +29,7 @@ timedatectl set-ntp true
 reflector -l 5 -p https -c no --sort rate --save /etc/pacman.d/mirrorlist
 
 # Make sure these are updated
-pacman -Sy --noconfirm git python reflector
+pacman -Sy --needed --noconfirm git python reflector
 
 
   
@@ -243,7 +243,7 @@ extra_packages=(
   swaybg swayidle mako wofi kitty gtk-engine-murrine
   pipewire wireplumber pipewire-jack pipewire-alsa pipewire-pulseaudio pavucontrol
   ttf-cascadia-code noto-fonts adobe-source-serif-fonts inter-font 
-  tpm2-tools libfido2 pcsc-tools pam-u2f
+  tpm2-tools libfido2 pcsc-tools pam-u2f gnupg ccid hopenpgp-tools
 )
 
 aur_packages=(aurutils amdctl pacman-hook-kernel-install auto-cpufreq gtklock 
@@ -275,20 +275,20 @@ done
 
 echo -e "\nInstalling additional packages"
 extra_packages+=("${aur_packages[@]}")
-arch-chroot /mnt pacman -Sy --noconfirm "${extra_packages[@]}"
+arch-chroot /mnt pacman -Sy --needed "${extra_packages[@]}"
 
 echo -e "\nConfiguring additional packages"
 
-arch-chroot /mnt bash -c"
+arch-chroot /mnt bash -c "
   ln -sf /usr/share/fontconfig/conf.avail/70-no-bitmaps.conf /etc/fonts/conf.d
   ln -sf /usr/share/fontconfig/conf.avail/10-sub-pixel-rgb.conf /etc/fonts/conf.d
   ln -sf /usr/share/fontconfig/fonts/conf.avail/11-lcdfilter-default.conf /etc/fonts/conf.d
 "
-install -vpm644 "$script_dir/etc/fonts-freetype2.sh" /etc/profile.d/freetype2.sh
-install -vpm644 "$script_dir/etc/fonts-local.conf" /etc/fonts/local.conf 
+install -vpm644 "$script_dir/etc/fonts-freetype2.sh" /mnt/etc/profile.d/freetype2.sh
+install -vpm644 "$script_dir/etc/fonts-local.conf" /mnt/etc/fonts/local.conf 
 
 install -m755 -d /mnt/usr/share/backgrounds
-install -vpm755 "$script_dir/usr/default.png" /usr/share/backgrounds/default.png
+install -vpm755 "$script_dir/usr/default.png" /mnt/usr/share/backgrounds/default.png
 install -vpm644 "$script_dir/etc/plymouthd.conf" /mnt/etc/plymouth/plymouthd.conf
 
 cat > /mnt/etc/greetd/config.toml <<EOF
@@ -307,7 +307,7 @@ EOF
 # https://wiki.archlinux.org/title/NetworkManager#systemd-resolved
 # https://wiki.archlinux.org/title/NetworkManager#Using_iwd_as_the_Wi-Fi_backend
 install -vm755 -d /mnt/etc/NetworkManager.conf.d
-install -vpm644 "$script_dir/etc/networkmanager-wifi.conf" /mnt/etc/NetworkManager.conf.d/wifi.conf
+install -vpm644 "$script_dir/etc/networkmanager-wifi.conf" /mnt/etc/NetworkManager/conf.d/wifi.conf
 ln -sf /run/systemd/resolve/stub-resolv.conf /mnt/etc/resolv.conf
 
 
