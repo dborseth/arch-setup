@@ -32,7 +32,8 @@ reflector -l 5 -p https -c no --sort rate --save /etc/pacman.d/mirrorlist
 pacman -Sy --needed --noconfirm git python reflector
 
 
-  
+
+# This doesn't really work on SSDs  
 read -rp "Shred disk before continuing? [y/N] " yn
 yn=${yn:-N}
       
@@ -240,15 +241,15 @@ extra_packages=(
   git man-db man-pages util-linux exa fzf ripgrep fd curl imv jq tmux  
   greetd greetd-agreety firefox wireguard-tools
   polkit-gnome xdg-desktop-portal-hyprland qt6-wayland qt5-wayland slurp grim 
-  swaybg swayidle mako wofi kitty gtk-engine-murrine
-  pipewire wireplumber pipewire-jack pipewire-alsa pipewire-pulseaudio pavucontrol
-  ttf-cascadia-code noto-fonts adobe-source-serif-fonts inter-font 
-  tpm2-tools libfido2 pcsc-tools pam-u2f gnupg ccid hopenpgp-tools
+  swaybg swayidle mako wofi kitty gtk-engine-murrine wl-clipboard
+  pipewire wireplumber pipewire-jack pipewire-alsa pipewire-pulse pavucontrol
+  ttf-cascadia-code noto-fonts adobe-source-serif-fonts inter-font otf-font-awesome 
+  tpm2-tools libfido2 pcsc-tools pam-u2f gnupg ccid gcr
 )
 
 aur_packages=(aurutils amdctl pacman-hook-kernel-install auto-cpufreq gtklock 
   helix-git zsh-antidote hyprland-nvidia-git hyprpicker-git plymouth-theme-neat
-  ironbar-git blueberry-wayland colloid-gtk-theme colloid-icon-theme apple_cursor)
+  ironbar-git blueberry-wayland colloid-gtk-theme-git colloid-icon-theme-git apple_cursor)
 
 # Sets up a local aur repository and syncs the list of aur packages to the repo.
 # The packages are then installed along with the other packages in the pacman repo. 
@@ -321,7 +322,8 @@ systemctl --root /mnt enable \
   fstrim.timer \
   greetd.service \
   apparmor.service \
-  pcscd.service
+  pcscd.service \
+  paccache.timer
 
 
 echo -e '\n*** Installation script finished, cleaning up'

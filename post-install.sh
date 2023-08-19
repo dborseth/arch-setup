@@ -1,26 +1,30 @@
 #!/bin/sh
 
-aur_packages=(clickhouse-client-bin terraform-ls cmake-language-server nvidia-container-toolkit)
+aur_packages=(
+  clickhouse-client-bin 
+  terraform-ls 
+  cmake-language-server 
+  nvidia-container-toolkit
+  dockerfile-language-server
+)
+
+for package in ${aur_packages[@]}; do
+  aur sync --noview -n $package
+done
+
 
 packages=(
-  yubikey-personalization 
-  yubikey-personalization-gui 
-
   xh
   rsync
   rclone
   devtools
 
-  clickhouse-client-bin
-
   docker
   docker-buildx
   docker-compose
-  dockerfile-language-server
 
   ansible
   terraform
-  terraform-ls  
 
   rustup 
   cargo-release
@@ -36,7 +40,7 @@ packages=(
   npm
   yarn
   typescript-language-server
-  vscode-css-language-server 
+  vscode-css-languageserver 
 
   shellcheck 
   shfmt 
@@ -51,13 +55,11 @@ packages=(
 
   yaml-language-server
   ansible-language-server
-  vscode-json-languageserver 
 
   gdb
   gcc
   clang 
   cmake
-  cmake-language-server
   meson
   ninja
   valgrind
@@ -66,7 +68,7 @@ packages=(
   font-manager
 )
 
-sudo pacman -Sy "${packages[@]}"
+sudo pacman -Sy --needed "${packages[@]}" "${aur_packages[@]}"
 
 echo -e "\nSetting up Rust"  
 rustup default stable
@@ -75,7 +77,7 @@ rustup component add rust-src
 rustup component add rust-analyzer
 
 echo -e "\nAdding groups"
-usermod --append --groups docker $USER
+sudo usermod --append --groups docker $USER
 
 echo -e "\nStarting services"
 systemctl enable --now \
