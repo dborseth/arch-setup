@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 aur_packages=(
   clickhouse-client-bin 
@@ -6,10 +6,11 @@ aur_packages=(
   cmake-language-server 
   nvidia-container-toolkit
   dockerfile-language-server
+  sql-language-server
 )
 
-for package in ${aur_packages[@]}; do
-  aur sync --noview -n $package
+for package in "${aur_packages[@]}"; do
+  aur sync --noview -n "$package"
 done
 
 
@@ -25,13 +26,13 @@ packages=(
 
   ansible
   terraform
-
+  
   rustup 
   cargo-release
   cargo-deny
   cargo-watch
-  sccache
-
+  lldb
+  
   kubectl 
   kubectx 
   k9s 
@@ -40,7 +41,11 @@ packages=(
   npm
   yarn
   typescript-language-server
-  vscode-css-languageserver 
+  vscode-css-languageserver
+  vscode-html-languageserver
+  vscode-json-languageserver
+  vscode-markdown-languageserver 
+  prettier
 
   shellcheck 
   shfmt 
@@ -55,10 +60,14 @@ packages=(
 
   yaml-language-server
   ansible-language-server
-
+  bash-language-server
+  lua-language-server
+    
   gdb
   gcc
-  clang 
+  clang
+  llvm
+  lld 
   cmake
   meson
   ninja
@@ -77,7 +86,7 @@ rustup component add rust-src
 rustup component add rust-analyzer
 
 echo -e "\nAdding groups"
-sudo usermod --append --groups docker $USER
+sudo usermod --append --groups docker "$USER"
 
 echo -e "\nStarting services"
 systemctl enable --now \

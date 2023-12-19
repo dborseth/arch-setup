@@ -1,0 +1,1 @@
+quiet splash rootflags=compress-force=zstd:1,space_cache=v2 lsm=landlock,lockdown,yama,integrity,apparmor,bpf audit=1 audit_backlog_limit=256 zswap.enabled=0

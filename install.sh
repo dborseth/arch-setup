@@ -20,18 +20,11 @@ while read -r line; do
   fi
 done <<< "$gpus"
 
-
-
-
 timedatectl set-ntp true
-
 # The updated mirrorlist will be transferred over with pacstrap
-reflector -l 5 -p https -c no --sort rate --save /etc/pacman.d/mirrorlist
-
+reflector -l 5 -p https  --sort rate --save /etc/pacman.d/mirrorlist
 # Make sure these are updated
 pacman -Sy --needed --noconfirm git python reflector
-
-
 
 # This doesn't really work on SSDs  
 read -rp "Shred disk before continuing? [y/N] " yn
@@ -40,13 +33,13 @@ yn=${yn:-N}
 case "$yn" in
   [yY]) 
     # https://wiki.archlinux.org/title/Securely_wipe_disk#shred
-    shred -v -n1 $disk
+    shred -v -n1 "$disk"
     ;;
   *) 
     ;;
 esac
   
-sgdisk -Z $disk
+sgdisk -Z "$disk"
 
 echo -e "\nCreating EFI and root partitions"
 # Creating an unencrypted EFI system partition with a FAT file system, and a root 
@@ -86,11 +79,9 @@ btrfs subvolume create /mnt/@cache
 btrfs subvolume create /mnt/@log
 btrfs subvolume create /mnt/@tmp
 
-
-
 # I had to put systemd-ukify in here to fix some errors when running kernel-install later. 
 base_packages=(base base-devel linux linux-firmware btrfs-progs mkinitcpio plymouth
-  systemd-ukify cryptsetup binutils elfutils sudo zsh sbctl sbsigntools fwupd git vifm pacman-contrib)
+  systemd-ukify cryptsetup binutils elfutils sudo fish sbctl sbsigntools fwupd git vifm pacman-contrib)
 
 # There are more vendor strings listed here: 
 # https://en.wikipedia.org/wiki/CPUID#Calling_CPUID
@@ -101,21 +92,19 @@ elif [[ "$cpu_vendor" == "AuthenticAMD" ]]; then
 fi
 
 if echo "${gpu_vendors[@]}" | grep -q "\bnvidia\b"; then
-  base_packages+=("dkms" "linux-headers" "nvidia-dkms" "nvidia-utils" "nvidia-settings" "nvidia-smi")
+  base_packages+=(dkms linux-headers nvidia-dkms nvidia-utils nvidia-settings)
 fi
  
 if echo "${gpu_vendors[@]}" | grep -q "\bamd\b"; then
-  base_packages+=("mesa" "vulkan-radeon")
+  base_packages+=(mesa vulkan-radeon)
 fi
 
 if echo "${gpu_vendors[@]}" | grep -q "\bintel\b"; then
-  base_packages+=("mesa" "vulkan-intel")
+  base_packages+=(mesa vulkan-intel)
 fi
 
 # Bootstrapping the filesystem
 pacstrap /mnt "${base_packages[@]}" 
-
-
 
 systemd-firstboot --force --root /mnt \
   --keymap=no-latin1 \
@@ -133,16 +122,18 @@ install -vm755 -d /mnt/etc/modprobe.d
 install -vm644 "$script_dir/etc/modprobe-blacklist.conf" /mnt/etc/modprobe.d/blacklist.conf
 install -vm644 "$script_dir/etc/modprobe-power.conf" /mnt/etc/modprobe.d/power.conf
 
-install -vm755 -d /mnt/etc/cmdline.d
-install -vm644 "$script_dir/etc/cmdline-boot.conf" /mnt/etc/cmdline.d/boot.conf 
-install -vm644 "$script_dir/etc/cmdline-zswap.conf" /mnt/etc/cmdline.d/zswap.conf 
-install -vm644 "$script_dir/etc/cmdline-btrfs.conf" /mnt/etc/cmdline.d/btrfs.conf 
-install -vm644 "$script_dir/etc/cmdline-security.conf" /mnt/etc/cmdline.d/security.conf 
+# install -vm644 "$script_dir/etc/cmdline-nvidia.conf" /mnt/etc/cmdline.d/nvidia.conf 
 
 # https://wiki.archlinux.org/title/Unified_kernel_image#kernel-install 
 # Use kernel-install to install UKI kernels to the esp, and mask the mkinitcpio
 # pacman hooks. Requires a pacman hook for kernel-install that is installed later.
 install -vpm644 "$script_dir/etc/kernel-install.conf" /mnt/etc/kernel/install.conf
+install -vpm644 "$script_dir/etc/kernel-uki.conf" /mnt/etc/kernel/uki.conf
+install -vpm644 "$script_dir/etc/kernel-cmdline" /mnt/etc/kernel/cmdline
+
+if echo "${gpu_vendors[@]}" | grep -q "\bnvidia\b"; then
+  echo -n " nvidia_drm.modeset=1" >> /mnt/etc/kernel/cmdline
+fi
 
 install -m755 -d /mnt/etc/pacman.d/hooks
 ln -sf /dev/null /mnt/etc/pacman.d/hooks/60-mkinitcpio-remove.hook
@@ -150,7 +141,6 @@ ln -sf /dev/null /mnt/etc/pacman.d/hooks/90-mkinitcpio-install.hook
 
 
 
-# TODO Can't seem to get this working with multiple drop-in files
 FILES=()
 MODULES=()
 HOOKS=(base systemd keyboard autodetect modconf sd-vconsole sd-encrypt block filesystems fsck)
@@ -238,24 +228,24 @@ extra_packages=(
   blueman bluez bluez-utils usbutils nvme-cli 
   htop nvtop powertop tlp 
   apparmor audit snapper zram-generator lm_sensors 
-  git man-db man-pages util-linux exa fzf ripgrep fd curl imv jq tmux  
+  git man-db man-pages util-linux eza fzf ripgrep fd curl imv jq zellij  
   greetd greetd-agreety firefox wireguard-tools
   polkit-gnome xdg-desktop-portal-hyprland qt6-wayland qt5-wayland slurp grim 
-  swaybg swayidle mako wofi kitty gtk-engine-murrine wl-clipboard
+  swaybg swayidle mako wofi foot gtk-engine-murrine wl-clipboard
   pipewire wireplumber pipewire-jack pipewire-alsa pipewire-pulse pavucontrol
   ttf-cascadia-code noto-fonts adobe-source-serif-fonts inter-font otf-font-awesome 
   tpm2-tools libfido2 pcsc-tools pam-u2f gnupg ccid gcr
 )
 
 aur_packages=(aurutils amdctl pacman-hook-kernel-install auto-cpufreq gtklock 
-  helix-git zsh-antidote hyprland-nvidia-git hyprpicker-git plymouth-theme-neat
+  helix-git hyprland-nvidia hyprpicker-git plymouth-theme-neat
   ironbar-git blueberry-wayland colloid-gtk-theme-git colloid-icon-theme-git apple_cursor)
 
 # Sets up a local aur repository and syncs the list of aur packages to the repo.
 # The packages are then installed along with the other packages in the pacman repo. 
 # TODO Move the repository to one of the servers to remove this step
 echo -e "\n Setting up local AUR repository"
-arch-chroot /mnt install -vd /var/cache/pacman/aur -o $username
+arch-chroot /mnt install -vd /var/cache/pacman/aur -o "$username"
 arch-chroot /mnt bash -c "
   sudo -u $username git clone https://aur.archlinux.org/aurutils.git /home/$username/aurutils 
   cd /home/$username/aurutils && sudo -u $username makepkg -si --noconfirm
@@ -270,7 +260,7 @@ install -vpm644 "$script_dir/etc/pacman.conf" /mnt/etc/pacman.conf
 arch-chroot /mnt pacman -Sy
 
 echo -e "\nSyncing AUR packages to local repository"
-for package in ${aur_packages[@]}; do
+for package in "${aur_packages[@]}"; do
   arch-chroot /mnt bash -c "sudo -u $username aur sync --noview -n $package"
 done
 
@@ -328,5 +318,5 @@ systemctl --root /mnt enable \
 
 echo -e '\n*** Installation script finished, cleaning up'
 
-#umount -R /mnt
-#cryptsetup luksClose root
+umount -R /mnt
+cryptsetup luksClose root
