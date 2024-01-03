@@ -131,27 +131,22 @@ install -vpm644 "$script_dir/etc/kernel-install.conf" /mnt/etc/kernel/install.co
 install -vpm644 "$script_dir/etc/kernel-uki.conf" /mnt/etc/kernel/uki.conf
 install -vpm644 "$script_dir/etc/kernel-cmdline" /mnt/etc/kernel/cmdline
 
-if echo "${gpu_vendors[@]}" | grep -q "\bnvidia\b"; then
-  echo -n " nvidia_drm.modeset=1" >> /mnt/etc/kernel/cmdline
-fi
-
 install -m755 -d /mnt/etc/pacman.d/hooks
 ln -sf /dev/null /mnt/etc/pacman.d/hooks/60-mkinitcpio-remove.hook
 ln -sf /dev/null /mnt/etc/pacman.d/hooks/90-mkinitcpio-install.hook
-
-
 
 FILES=()
 MODULES=()
 HOOKS=(base systemd keyboard autodetect modconf sd-vconsole sd-encrypt block filesystems fsck)
 
-install -vm755 -d /mnt/etc/mkinitcpio.conf.d
-
-# https://wiki.archlinux.org/title/Kernel_mode_setting#Early_KMS_start
+  # Required by Wayland/Hyprland
 if echo "${gpu_vendors[@]}" | grep -q "\bnvidia\b"; then
+  # https://wiki.archlinux.org/title/Kernel_mode_setting#Early_KMS_start
   # https://wiki.archlinux.org/title/NVIDIA#DRM_kernel_mode_setting
   install -vm644 "$script_dir/etc/modprobe-nvidia.conf" /mnt/etc/modprobe.d/nvidia.conf
+  install -vm644 "$script_dir/etc/environment" /mnt/etc/environment
   MODULES+=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)
+  echo -n " nvidia_drm.modeset=1" >> /mnt/etc/kernel/cmdline
 fi
  
 if echo "${gpu_vendors[@]}" | grep -q "\bamd\b"; then
@@ -192,7 +187,7 @@ arch-chroot /mnt kernel-install add "${kernel_version}" \
    "/usr/lib/modules/${kernel_version}/vmlinuz"
 
 
-read -p "Enroll secure boot keys? [y/N] " enroll_keys
+read -rp "Enroll secure boot keys? This will fail and exit if not in setup mode. [y/N] " enroll_keys
 enroll_keys=${enroll_keys:-N}
 case "$enroll_keys" in
   [yY]) 
@@ -206,7 +201,7 @@ esac
 #bootctl --root /mnt update
 
 echo -e "\nCreating new user"
-read -p "Enter username: " username
+read -rp "Enter username: " username
 useradd -R /mnt -m -s /usr/bin/zsh "$username"
 usermod -R /mnt -aG wheel,storage,power "$username"
 passwd -R /mnt "$username"
