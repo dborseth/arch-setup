@@ -2,79 +2,76 @@
 
 aur_packages=(
   clickhouse-client-bin 
-  terraform-ls 
   cmake-language-server 
-  nvidia-container-toolkit
   dockerfile-language-server
+  nvidia-container-toolkit
   sql-language-server
+  terraform-ls 
 )
 
 for package in "${aur_packages[@]}"; do
   aur sync --noview -n "$package"
 done
 
-
 packages=(
-  xh
-  rsync
-  rclone
+  ansible
+  ansible-language-server
+  bash-language-server
+  cargo-deny
+  cargo-release
+  cargo-watch
+  cilium-cli
+  clang
+  cmake
   devtools
-
   docker
   docker-buildx
   docker-compose
-
-  ansible
-  terraform
-  
-  rustup 
-  cargo-release
-  cargo-deny
-  cargo-watch
-  lldb
-  
+  dprint
+  elixir
+  elixir-ls
+  eslint
+  eslint-language-server
+  fluxcd
+  font-manager
+  gcc
+  gdb
+  gitu
+  k9s 
   kubectl 
   kubectx 
-  k9s 
-
+  lld 
+  lldb
+  llvm
+  lua-language-server
+  meson
   nodejs
+  ninja
   npm
-  yarn
-  typescript-language-server
-  vscode-css-languageserver
-  vscode-html-languageserver
-  vscode-json-languageserver
-  vscode-markdown-languageserver 
   prettier
-
-  shellcheck 
-  shfmt 
-
   python
   python-pipx
   python-poetry
   python-virtualenv
-  ruff 
   # python-lsp-server
   pyright
-
-  yaml-language-server
-  ansible-language-server
-  bash-language-server
-  lua-language-server
-    
-  gdb
-  gcc
-  clang
-  llvm
-  lld 
-  cmake
-  meson
-  ninja
+  rsync
+  rclone
+  ruff 
+  rustup 
+  shellcheck 
+  shfmt 
+  sql-language-server
+  terraform
+  typescript-language-server
   valgrind
-
-  obsidian
-  font-manager
+  vscode-css-languageserver
+  vscode-html-languageserver
+  vscode-json-languageserver
+  vscode-markdown-languageserver 
+  xh
+  yaml-language-server
+  yarn
 )
 
 sudo pacman -Sy --needed "${packages[@]}" "${aur_packages[@]}"

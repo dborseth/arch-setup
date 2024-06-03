@@ -1,7 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-
 script_dir=$(dirname "$(readlink -f "$0")")
 disk="$1"
 cpu_vendor=$(grep "vendor_id" /proc/cpuinfo | head -n 1 | awk '{print $3}')
@@ -197,12 +196,11 @@ case "$enroll_keys" in
     ;;
 esac
 
-
 #bootctl --root /mnt update
 
 echo -e "\nCreating new user"
-read -rp "Enter username: " username
-useradd -R /mnt -m -s /usr/bin/zsh "$username"
+read -p "Enter username: " username
+useradd -R /mnt -m -s /usr/bin/fish "$username"
 usermod -R /mnt -aG wheel,storage,power "$username"
 passwd -R /mnt "$username"
 
@@ -216,8 +214,6 @@ arch-chroot /mnt bash -c "sudo -u $username git clone --bare https://github.com/
 arch-chroot /mnt bash -c "sudo -u $username $git_cmd config --local status.showUntrackedFiles no"
 arch-chroot /mnt bash -c "sudo -u $username $git_cmd checkout"
 
-
-
 extra_packages=(
   networkmanager iwd openssh 
   blueman bluez bluez-utils usbutils nvme-cli 
@@ -226,15 +222,15 @@ extra_packages=(
   git man-db man-pages util-linux eza fzf ripgrep fd curl imv jq zellij  
   greetd greetd-agreety firefox wireguard-tools
   polkit-gnome xdg-desktop-portal-hyprland qt6-wayland qt5-wayland slurp grim 
-  swaybg swayidle mako wofi foot gtk-engine-murrine wl-clipboard
+  hyprland swaybg swayidle mako wofi foot gtk-engine-murrine wl-clipboard
   pipewire wireplumber pipewire-jack pipewire-alsa pipewire-pulse pavucontrol
   ttf-cascadia-code noto-fonts adobe-source-serif-fonts inter-font otf-font-awesome 
   tpm2-tools libfido2 pcsc-tools pam-u2f gnupg ccid gcr
 )
 
 aur_packages=(aurutils amdctl pacman-hook-kernel-install auto-cpufreq gtklock 
-  helix-git hyprland-nvidia hyprpicker-git plymouth-theme-neat
-  ironbar-git blueberry-wayland colloid-gtk-theme-git colloid-icon-theme-git apple_cursor)
+  helix-git hyprpicker-git plymouth-theme-neat
+  ironbar-git blueberry-wayland)
 
 # Sets up a local aur repository and syncs the list of aur packages to the repo.
 # The packages are then installed along with the other packages in the pacman repo. 
@@ -243,9 +239,8 @@ echo -e "\n Setting up local AUR repository"
 arch-chroot /mnt install -vd /var/cache/pacman/aur -o "$username"
 arch-chroot /mnt bash -c "
   sudo -u $username git clone https://aur.archlinux.org/aurutils.git /home/$username/aurutils 
-  cd /home/$username/aurutils && sudo -u $username makepkg -si --noconfirm
-  sudo -u rm -rf /home/$username/aurutils
-  sudo -u $username repo-add /var/cache/pacman/aur/aur.db.tar
+  cd /home/$username/aurutils && sudo -u $username makepkg -si --noconfirm && sudo -u $username cp aurutils-*.pkg.tar.zst /var/cache/pacman/aur
+  sudo -u $username repo-add /var/cache/pacman/aur/aur.db.tar /var/cache/pacman/aur/aurutils-*.pkg.tar.zst
 "
 
 # Add pacman config that includes a custom repository pointing to /var/cache/pacman/aur.
